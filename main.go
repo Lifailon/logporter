@@ -180,30 +180,28 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	// Network
 	networks, ok := data["networks"].(map[string]interface{})
 	if ok {
-		// network_interface := networks["eth0"].(map[string]interface{})
-		var network_interface map[string]interface{}
-		var ok bool
+		// Aggregate stats from all network interfaces
 		for _, v := range networks {
-			// Get the first interface
-			network_interface, ok = v.(map[string]interface{})
-			break
-		}
-		if ok {
-			rx_bytes, ok := network_interface["rx_bytes"].(float64)
-			if ok {
-				bm.netReceiveBytes = int(rx_bytes)
+			network_interface, ok := v.(map[string]interface{})
+			if !ok {
+				continue
 			}
-			rx_packets, ok := network_interface["rx_packets"].(float64)
-			if ok {
-				bm.netReceivePackets = int(rx_packets)
+			
+			// Accumulate rx_bytes from all interfaces
+			if rx_bytes, ok := network_interface["rx_bytes"].(float64); ok {
+				bm.netReceiveBytes += int(rx_bytes)
 			}
-			tx_bytes, ok := network_interface["tx_bytes"].(float64)
-			if ok {
-				bm.netTransmitBytes = int(tx_bytes)
+			// Accumulate rx_packets from all interfaces
+			if rx_packets, ok := network_interface["rx_packets"].(float64); ok {
+				bm.netReceivePackets += int(rx_packets)
 			}
-			tx_packets, ok := network_interface["tx_packets"].(float64)
-			if ok {
-				bm.netTransmitPackets = int(tx_packets)
+			// Accumulate tx_bytes from all interfaces
+			if tx_bytes, ok := network_interface["tx_bytes"].(float64); ok {
+				bm.netTransmitBytes += int(tx_bytes)
+			}
+			// Accumulate tx_packets from all interfaces
+			if tx_packets, ok := network_interface["tx_packets"].(float64); ok {
+				bm.netTransmitPackets += int(tx_packets)
 			}
 		}
 	}
@@ -214,10 +212,20 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 		ioBytesRecursive, ok := blkioStats["io_service_bytes_recursive"].([]interface{})
 		if ok {
 			for i := range ioBytesRecursive {
-				if ioBytesRecursive[i].(map[string]interface{})["op"] == "read" {
-					bm.ioReadBytes = int(ioBytesRecursive[i].(map[string]interface{})["value"].(float64))
-				} else {
-					bm.ioWriteBytes = int(ioBytesRecursive[i].(map[string]interface{})["value"].(float64))
+				operation := ioBytesRecursive[i].(map[string]interface{})
+				op, ok := operation["op"].(string)
+				if !ok {
+					continue
+				}
+				value, ok := operation["value"].(float64)
+				if !ok {
+					continue
+				}
+				
+				if op == "read" {
+					bm.ioReadBytes += int(value)
+				} else if op == "write" {
+					bm.ioWriteBytes += int(value)
 				}
 			}
 		}
