@@ -64,13 +64,14 @@ curl -sSL https://raw.githubusercontent.com/Lifailon/logporter/refs/heads/main/d
 docker-compose up -d
 ```
 
-Use environment variables to apply custom metrics:
+Use environment variables to configure the exporter:
 
-| Lable                       | Type      | Default                        | Description                                                                                           |
-| -                           | -         | -                              | -                                                                                                     |
+| Label                       | Type      | Default                        | Description                                                                                           |
+| --------------------------- | --------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | `DOCKER_LOG_METRICS`        | `boolean` | `false`                        | Getting the number of messages in logs from all streams                                               |
 | `DOCKER_LOG_CUSTOM_METRICS` | `boolean` | `false`                        | Enable getting custom metrics                                                                         |
 | `DOCKER_LOG_CUSTOM_QUERY`   | `string`  | `\"(err\|error\|ERR\|ERROR)\"` | Custom filter query in regex format (default example is equivalent to `error` level in `json` format) |
+| `DOCKER_HOST`               | `string`  | `""`                           | Optional: Use a docker proxy instead of the docker socket mount for additional security.              |
 
 - Connect the new target in the `prometheus.yml` configuration:
 
