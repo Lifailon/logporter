@@ -12,5 +12,20 @@ services:
       - DOCKER_LOG_METRICS=false
       - DOCKER_LOG_CUSTOM_METRICS=false
       - DOCKER_LOG_CUSTOM_QUERY=\"(err|error|ERR|ERROR)\"
+      # Optional: Use a docker proxy instead of the docker socket mount for improved security.
+      # - DOCKER_HOST=tcp://proxy:2375
     ports:
       - 9333:9333
+
+  # Optional: A docker proxy service is only needed if DOCKER_PROXY is set.
+  # It improves security by filtering api calls and disallowing write operations.
+  proxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: docker-proxy
+    restart: unless-stopped
+    expose:
+      - 2375
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - CONTAINERS=1
