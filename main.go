@@ -234,7 +234,9 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	// PIDs count
 	pidsStats, ok := data["pids_stats"].(map[string]interface{})
 	if ok {
-		bm.pids = int(pidsStats["current"].(float64))
+		if current, ok := pidsStats["current"].(float64); ok {
+			bm.pids = int(current)
+		}
 	}
 
 	// defer wg.Done()
