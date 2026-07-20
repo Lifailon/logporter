@@ -28,6 +28,10 @@ type Metrics struct {
 	logRegex            *regexp.Regexp
 	logMetrics          map[string]*LogMetrics
 	inspectMetrics      map[string]float64
+	cacheData           []string
+	cacheTime           time.Time
+	cacheTTL            time.Duration
+	cacheMutex          sync.RWMutex
 }
 
 type Info struct {
@@ -125,7 +129,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	}
 
 	// Create a map to extract data from json
-	var data map[string]interface{}
+	var data map[string]any
 
 	// Parsing json and fill in map
 	err = json.Unmarshal(jsonStats, &data)
@@ -142,9 +146,9 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	bm.id = id
 
 	// Processor
-	cpuStats, ok := data["cpu_stats"].(map[string]interface{})
+	cpuStats, ok := data["cpu_stats"].(map[string]any)
 	if ok {
-		cpuUsage, ok := cpuStats["cpu_usage"].(map[string]interface{})
+		cpuUsage, ok := cpuStats["cpu_usage"].(map[string]any)
 		if ok {
 			cpuTotal, ok := cpuUsage["total_usage"].(float64)
 			if ok {
@@ -163,7 +167,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	}
 
 	// Memory
-	memory_stats, ok := data["memory_stats"].(map[string]interface{})
+	memory_stats, ok := data["memory_stats"].(map[string]any)
 	if ok {
 		memory_limit, ok := memory_stats["limit"].(float64)
 		if ok {
@@ -178,15 +182,14 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	}
 
 	// Network
-	networks, ok := data["networks"].(map[string]interface{})
+	networks, ok := data["networks"].(map[string]any)
 	if ok {
 		// Aggregate stats from all network interfaces
 		for _, v := range networks {
-			network_interface, ok := v.(map[string]interface{})
+			network_interface, ok := v.(map[string]any)
 			if !ok {
 				continue
 			}
-			
 			// Accumulate rx_bytes from all interfaces
 			if rx_bytes, ok := network_interface["rx_bytes"].(float64); ok {
 				bm.netReceiveBytes += int(rx_bytes)
@@ -207,12 +210,15 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	}
 
 	// IO
-	blkioStats, ok := data["blkio_stats"].(map[string]interface{})
+	blkioStats, ok := data["blkio_stats"].(map[string]any)
 	if ok {
-		ioBytesRecursive, ok := blkioStats["io_service_bytes_recursive"].([]interface{})
+		ioBytesRecursive, ok := blkioStats["io_service_bytes_recursive"].([]any)
 		if ok {
 			for i := range ioBytesRecursive {
-				operation := ioBytesRecursive[i].(map[string]interface{})
+				operation, ok := ioBytesRecursive[i].(map[string]any)
+				if !ok {
+					continue
+				}
 				op, ok := operation["op"].(string)
 				if !ok {
 					continue
@@ -221,10 +227,10 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 				if !ok {
 					continue
 				}
-				
-				if op == "read" {
+				switch op {
+				case "read":
 					bm.ioReadBytes += int(value)
-				} else if op == "write" {
+				case "write":
 					bm.ioWriteBytes += int(value)
 				}
 			}
@@ -232,10 +238,10 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	}
 
 	// PIDs count
-	pidsStats, ok := data["pids_stats"].(map[string]interface{})
+	pidsStats, ok := data["pids_stats"].(map[string]any)
 	if ok {
-		if current, ok := pidsStats["current"].(float64); ok {
-			bm.pids = int(current)
+		if pidsCurrent, ok := pidsStats["current"].(float64); ok {
+			bm.pids = int(pidsCurrent)
 		}
 	}
 
@@ -249,6 +255,7 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	logsOptions := container.LogsOptions{
 		ShowStdout: stdout,
 		ShowStderr: stderr,
+		Tail:       "100",
 	}
 
 	// Get log content
@@ -342,6 +349,11 @@ func (m *Metrics) prometheusFormat(metricName, helpText, typeData, id, container
 
 // Getting all metrics in Prometheus format
 func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
+	// Skip container if base metrics collection failed
+	if m.baseMetrics[id] == nil {
+		return nil
+	}
+
 	// Main text slice
 	var data []string
 
@@ -439,34 +451,36 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 
 	// Logs
 	if m.getLogMetrics {
-		data = append(data, m.prometheusFormat(
-			"docker_logs_stdout_count",
-			"Number of logs from stdout stream",
-			"counter", id, containerName, hostname,
-			m.logMetrics[id].stdout,
-		)...)
-
-		data = append(data, m.prometheusFormat(
-			"docker_logs_stderr_count",
-			"Number of logs from stderr stream",
-			"counter", id, containerName, hostname,
-			m.logMetrics[id].stderr,
-		)...)
-
-		data = append(data, m.prometheusFormat(
-			"docker_logs_all_count",
-			"Number of logs from all stream",
-			"counter", id, containerName, hostname,
-			m.logMetrics[id].stdall,
-		)...)
-
-		if m.getLogCustomMetrics {
+		if m.logMetrics[id] != nil {
 			data = append(data, m.prometheusFormat(
-				"docker_logs_custom_count",
-				"Number of logs containing custom regular expression from all streams (by default, containing the error level)",
+				"docker_logs_stdout_count",
+				"Number of logs from stdout stream",
 				"counter", id, containerName, hostname,
-				m.logMetrics[id].stdCustom,
+				m.logMetrics[id].stdout,
 			)...)
+
+			data = append(data, m.prometheusFormat(
+				"docker_logs_stderr_count",
+				"Number of logs from stderr stream",
+				"counter", id, containerName, hostname,
+				m.logMetrics[id].stderr,
+			)...)
+
+			data = append(data, m.prometheusFormat(
+				"docker_logs_all_count",
+				"Number of logs from all stream",
+				"counter", id, containerName, hostname,
+				m.logMetrics[id].stdall,
+			)...)
+
+			if m.getLogCustomMetrics {
+				data = append(data, m.prometheusFormat(
+					"docker_logs_custom_count",
+					"Number of logs containing custom regular expression from all streams (by default, containing the error level)",
+					"counter", id, containerName, hostname,
+					m.logMetrics[id].stdCustom,
+				)...)
+			}
 		}
 	}
 
@@ -622,6 +636,7 @@ func (m *Metrics) getHostname(dockerClient *client.Client) string {
 func main() {
 	// Initialize the main structure
 	var metrics *Metrics = &Metrics{}
+	metrics.cacheTTL = 15 * time.Second
 	var err error
 
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
@@ -664,7 +679,24 @@ func main() {
 	// Endpoint: /metrics
 	httpServerMux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-		metricsData := metrics.getMetrics(dockerClient, hostname)
+
+		metrics.cacheMutex.RLock()
+		cacheValid := len(metrics.cacheData) > 0 && time.Since(metrics.cacheTime) < metrics.cacheTTL
+		metrics.cacheMutex.RUnlock()
+
+		var metricsData []string
+		if cacheValid {
+			metrics.cacheMutex.RLock()
+			metricsData = metrics.cacheData
+			metrics.cacheMutex.RUnlock()
+		} else {
+			metricsData = metrics.getMetrics(dockerClient, hostname)
+			metrics.cacheMutex.Lock()
+			metrics.cacheData = metricsData
+			metrics.cacheTime = time.Now()
+			metrics.cacheMutex.Unlock()
+		}
+
 		// Output metrics in Prometheus format
 		for _, m := range metricsData {
 			fmt.Fprintln(w, m)
