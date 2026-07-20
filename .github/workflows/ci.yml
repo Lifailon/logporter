@@ -26,7 +26,7 @@ jobs:
             -t lifailon/logporter:latest \
             --load .
 
-      - name: Run container
+      - name: Run logporter container
         if: ${{ github.event.inputs.Check == 'true' }}
         run: |
           docker run -d --name logporter \
@@ -34,6 +34,23 @@ jobs:
             -p 9333:9333 \
             --restart=always \
             lifailon/logporter:latest
+
+      - name: Install docker-compose
+        if: ${{ github.event.inputs.Check == 'true' }}
+        run: |
+          mkdir -p $HOME/.local/bin
+          version=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
+          curl -sSL "https://github.com/docker/compose/releases/download/$version/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+          mkdir -p $HOME/.docker/cli-plugins
+          cp /usr/local/bin/docker-compose $HOME/.docker/cli-plugins/docker-compose
+          docker compose version
+
+      - name: Run prometheus service
+        if: ${{ github.event.inputs.Check == 'true' }}
+        run: |
+          sed -i "s|logporter:9333|localhost:9333|" prometheus/prometheus.yml
+          docker compose up -d prometheus
 
       - name: Check metrics
         if: ${{ github.event.inputs.Check == 'true' }}
@@ -43,6 +60,8 @@ jobs:
             curl -sS localhost:9333/metrics | grep 'containerName="logporter"' | grep docker_cpu_usage_total
             sleep 5
           done
+          docker logs logporter
+          docker stop logporter && docker rm logporter
 
       - name: Login to Docker Hub
         if: ${{ github.event.inputs.Publish == 'true' }}
