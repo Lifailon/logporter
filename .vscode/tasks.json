@@ -1,0 +1,48 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start ssh tunnel to remote docker socket",
+            "type": "shell",
+            "command": "ssh -NL 2375:/var/run/docker.sock lifailon@${input:ip} -p 2121",
+            "isBackground": true,
+            "options": {
+                "shell": {
+                    "executable": "powershell"
+                }
+            },
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^.*$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^.*$",
+                    "endsPattern": "^.*$"
+                }
+            }
+        },
+        {
+            "label": "Stop ssh tunnel",
+            "type": "shell",
+            "command": "Stop-Process -Id $(Get-NetTCPConnection -LocalPort 2375 -ErrorAction SilentlyContinue).OwningProcess -Force -ErrorAction SilentlyContinue",
+            "options": {
+                "shell": {
+                    "executable": "powershell"
+                }
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "ip",
+            "type": "pickString",
+            "description": "Select the server address to access the Docker socket",
+            "options": [
+                "192.168.3.101",
+                "192.168.3.105",
+                "192.168.3.106"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Remote debug",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/main.go",
+            "env": {
+                "DOCKER_HOST": "tcp://127.0.0.1:2375"
+            },
+            "preLaunchTask": "Start ssh tunnel to remote docker socket",
+            "postDebugTask": "Stop ssh tunnel"
+        }
+    ]
+}
