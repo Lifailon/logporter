@@ -96,25 +96,27 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 	for _, container := range containers {
 		// Debug output container info
 		// godump.Dump(container)
-		// Counting the number of running containers
-		if container.State == "running" {
-			containersUp++
-		} else {
-			containersDown++
-			continue
-		}
+
 		// Fills the info structure
 		i := Info{}
-		currentId := container.ID
 		i.name = strings.Replace(container.Names[0], "/", "", 1)
 		i.state = container.State
 		i.status = container.Status
 		i.composeProject = container.Labels["com.docker.compose.project"]
 		i.composeService = container.Labels["com.docker.compose.service"]
 		i.composeWorkDir = container.Labels["com.docker.compose.project.working_dir"]
+
+		currentId := container.ID
 		info[currentId] = &i
-		// Fills an array of container id
-		idArr = append(idArr, currentId)
+
+		if container.State == "running" {
+			containersUp++
+			// Fills an array of container id for get metrics
+			idArr = append(idArr, currentId)
+		} else {
+			// Skip get metrics
+			containersDown++
+		}
 	}
 	return info, idArr, containersUp, containersDown
 }
@@ -319,8 +321,10 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 		log.Println("Failed to inspect container: %w", err)
 		return
 	}
+
 	// Debug output inspect data
 	// godump.Dump(inspect)
+
 	// Get started time
 	startedDate := inspect.State.StartedAt
 	// Converting string to time type
@@ -726,10 +730,33 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 	metricText := fmt.Sprintf("docker_containers_up_count{hostname=\"%s\"} %v", hostname, m.containersUp)
 	data = append(data, metricText)
 
+	data = append(data, "")
+
 	data = append(data, "# HELP docker_containers_down_count Number of stopped containers")
 	data = append(data, "# TYPE docker_containers_down_count gauge")
 	metricText = fmt.Sprintf("docker_containers_down_count{hostname=\"%s\"} %v", hostname, m.containersDown)
 	data = append(data, metricText)
+
+	data = append(data, "")
+
+	for id, info := range m.info {
+		var upValue int
+		if info.state == "running" {
+			upValue = 1
+		}
+		data = append(data, m.prometheusFormat(
+			"docker_container_status",
+			"Container status: running (1) or stopped (0)",
+			"gauge",
+			id,
+			info.name,
+			info.composeProject,
+			info.composeService,
+			info.composeWorkDir,
+			hostname,
+			upValue,
+		)...)
+	}
 
 	data = append(data, "")
 
