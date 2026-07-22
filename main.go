@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -18,20 +17,18 @@ import (
 )
 
 type Metrics struct {
-	containersUp        int
-	containersDown      int
-	id                  []string
-	info                map[string]*Info
-	baseMetrics         map[string]*BaseMetrics
-	getLogMetrics       bool
-	getLogCustomMetrics bool
-	logRegex            *regexp.Regexp
-	logMetrics          map[string]*LogMetrics
-	inspectMetrics      map[string]float64
-	cacheData           []string
-	cacheTime           time.Time
-	cacheTTL            time.Duration
-	cacheMutex          sync.RWMutex
+	containersUp   int
+	containersDown int
+	id             []string
+	info           map[string]*Info
+	baseMetrics    map[string]*BaseMetrics
+	getLogMetrics  bool
+	logMetrics     map[string]*LogMetrics
+	inspectMetrics map[string]float64
+	cacheData      []string
+	cacheTime      time.Time
+	cacheTTL       time.Duration
+	cacheMutex     sync.RWMutex
 }
 
 type Info struct {
@@ -61,20 +58,16 @@ type BaseMetrics struct {
 }
 
 type LogMetrics struct {
-	stdout       int
-	stderr       int
-	stdall       int
-	stderrCustom int
-	stdoutCustom int
-	stdCustom    int
+	stdout int
+	stderr int
+	stdall int
 }
 
 type LogMetric struct {
-	id          string
-	stdout      bool
-	stderr      bool
-	value       int
-	customValue int
+	id     string
+	stdout bool
+	stderr bool
+	value  int
 }
 
 type InspectMetric struct {
@@ -264,7 +257,7 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	logsOptions := container.LogsOptions{
 		ShowStdout: stdout,
 		ShowStderr: stderr,
-		Tail:       "100",
+		// Tail:    "100",
 	}
 
 	// Get log content
@@ -290,24 +283,11 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	// Get line count
 	countLogs := len(lines) - 1
 
-	// Parse errors/custom lines
-	errConuter := 0
-	if m.getLogCustomMetrics {
-		if len(lines) > 1 {
-			for _, line := range lines {
-				if m.logRegex.MatchString(line) {
-					errConuter++
-				}
-			}
-		}
-	}
-
 	logMetric := LogMetric{
-		id:          id,
-		stdout:      stdout,
-		stderr:      stderr,
-		value:       countLogs,
-		customValue: errConuter,
+		id:     id,
+		stdout: stdout,
+		stderr: stderr,
+		value:  countLogs,
 	}
 
 	defer wg.Done()
@@ -592,21 +572,6 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 				hostname,
 				m.logMetrics[id].stdall,
 			)...)
-
-			if m.getLogCustomMetrics {
-				data = append(data, m.prometheusFormat(
-					"docker_logs_custom_count",
-					"Number of logs containing custom regular expression from all streams (by default, containing the error level)",
-					"counter",
-					id,
-					containerName,
-					composeProject,
-					composeService,
-					composeWorkDir,
-					hostname,
-					m.logMetrics[id].stdCustom,
-				)...)
-			}
 		}
 	}
 
@@ -639,6 +604,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 	wg.Add(len(m.id))
 	results := make(chan *BaseMetrics, len(m.id))
 
+	// Get base metrics
 	for _, id := range m.id {
 		go func(containerID string) {
 			defer wg.Done()
@@ -660,6 +626,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 		}
 	}
 
+	// Get log metrics
 	if m.getLogMetrics {
 		// Create x2 groups for logs (stdout and stderr)
 		wg.Add(len(m.id) * 2)
@@ -683,23 +650,14 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 			}
 			if lr.stdout {
 				m.logMetrics[lr.id].stdout = lr.value
-				if m.getLogCustomMetrics {
-					m.logMetrics[lr.id].stderrCustom = lr.customValue
-				}
 			} else if lr.stderr {
 				m.logMetrics[lr.id].stderr = lr.value
-				if m.getLogCustomMetrics {
-					m.logMetrics[lr.id].stdoutCustom = lr.customValue
-				}
 			}
 		}
 
 		// Filling the sum of the streams
 		for _, id := range m.id {
 			m.logMetrics[id].stdall = m.logMetrics[id].stdout + m.logMetrics[id].stderr
-			if m.getLogCustomMetrics {
-				m.logMetrics[id].stdCustom = m.logMetrics[id].stderrCustom + m.logMetrics[id].stdoutCustom
-			}
 		}
 	}
 
@@ -808,20 +766,6 @@ func main() {
 		metrics.getLogMetrics = true
 	} else {
 		metrics.getLogMetrics = false
-	}
-	getLogCustomMetrics := os.Getenv("DOCKER_LOG_CUSTOM_METRICS")
-	if getLogCustomMetrics == "true" || getLogCustomMetrics == "True" {
-		metrics.getLogCustomMetrics = true
-		textRegex := os.Getenv("DOCKER_LOG_CUSTOM_QUERY")
-		if textRegex == "" {
-			textRegex = `\"(err|error|ERR|ERROR)\"`
-		}
-		metrics.logRegex, err = regexp.Compile(textRegex)
-		if err != nil {
-			log.Fatalf("Failed to compile custom query regular expression: %v", err)
-		}
-	} else {
-		metrics.getLogCustomMetrics = false
 	}
 
 	// Get hostname
