@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -537,7 +538,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 		if m.logMetrics[id] != nil {
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stdout_count",
-				"Number of logs from stdout stream per interval",
+				"Number of logs from stdout stream per scrape interval",
 				"gauge",
 				id,
 				containerName,
@@ -550,7 +551,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stderr_count",
-				"Number of logs from stderr stream per interval",
+				"Number of logs from stderr stream per scrape interval",
 				"gauge",
 				id,
 				containerName,
@@ -563,7 +564,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 
 			data = append(data, m.prometheusFormat(
 				"docker_logs_all_count",
-				"Number of logs from all stream per interval",
+				"Number of logs from all stream per scrape interval",
 				"gauge",
 				id,
 				containerName,
@@ -753,9 +754,26 @@ func (m *Metrics) getHostname(dockerClient *client.Client) string {
 func main() {
 	// Initialize the main structure
 	var metrics *Metrics = &Metrics{}
-	metrics.cacheTTL = 15 * time.Second
-	metrics.lastLogScrape = time.Now()
 	var err error
+
+	// Get environment variables
+	metrics.getLogMetrics = true
+	getLogMetrics := os.Getenv("DOCKER_LOG_METRICS")
+	if strings.ToLower(getLogMetrics) == "false" {
+		metrics.getLogMetrics = false
+	}
+	if metrics.getLogMetrics {
+		metrics.lastLogScrape = time.Now()
+	}
+
+	metrics.cacheTTL = 15 * time.Second
+	envCache := os.Getenv("DOCKER_CACHE_METRICS")
+	if envCache != "" {
+		parsed, err := strconv.Atoi(envCache)
+		if err == nil && parsed > 0 {
+			metrics.cacheTTL = time.Duration(parsed) * time.Second
+		}
+	}
 
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -764,14 +782,6 @@ func main() {
 		log.Fatalf("Failed to create Docker client: %v", err)
 	}
 	defer dockerClient.Close()
-
-	// Get environment variables
-	getLogMetrics := os.Getenv("DOCKER_LOG_METRICS")
-	if getLogMetrics == "true" || getLogMetrics == "True" {
-		metrics.getLogMetrics = true
-	} else {
-		metrics.getLogMetrics = false
-	}
 
 	// Get hostname
 	// hostname, _ := os.Hostname()
