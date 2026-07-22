@@ -29,6 +29,7 @@ type Metrics struct {
 	cacheTime      time.Time
 	cacheTTL       time.Duration
 	cacheMutex     sync.RWMutex
+	lastLogScrape  time.Time
 }
 
 type Info struct {
@@ -252,12 +253,12 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 }
 
 // Get line count from logs for specified container by id
-func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bool, stderr bool, wg *sync.WaitGroup, results chan *LogMetric) {
+func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bool, stderr bool, since time.Time, wg *sync.WaitGroup, results chan *LogMetric) {
 	// Fill in options to read container logs
 	logsOptions := container.LogsOptions{
 		ShowStdout: stdout,
 		ShowStderr: stderr,
-		// Tail:    "100",
+		Since:      fmt.Sprintf("%d", since.Unix()),
 	}
 
 	// Get log content
@@ -536,8 +537,8 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 		if m.logMetrics[id] != nil {
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stdout_count",
-				"Number of logs from stdout stream",
-				"counter",
+				"Number of logs from stdout stream per interval",
+				"gauge",
 				id,
 				containerName,
 				composeProject,
@@ -549,8 +550,8 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stderr_count",
-				"Number of logs from stderr stream",
-				"counter",
+				"Number of logs from stderr stream per interval",
+				"gauge",
 				id,
 				containerName,
 				composeProject,
@@ -562,8 +563,8 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 
 			data = append(data, m.prometheusFormat(
 				"docker_logs_all_count",
-				"Number of logs from all stream",
-				"counter",
+				"Number of logs from all stream per interval",
+				"gauge",
 				id,
 				containerName,
 				composeProject,
@@ -634,8 +635,8 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 
 		// Get a list of custom metrics from logs
 		for _, id := range m.id {
-			go m.getLogsCount(dockerClient, id, true, false, &wg, logResults)
-			go m.getLogsCount(dockerClient, id, false, true, &wg, logResults)
+			go m.getLogsCount(dockerClient, id, true, false, m.lastLogScrape, &wg, logResults)
+			go m.getLogsCount(dockerClient, id, false, true, m.lastLogScrape, &wg, logResults)
 		}
 
 		wg.Wait()
@@ -659,6 +660,9 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 		for _, id := range m.id {
 			m.logMetrics[id].stdall = m.logMetrics[id].stdout + m.logMetrics[id].stderr
 		}
+
+		// Update new scrape date
+		m.lastLogScrape = time.Now()
 	}
 
 	// Get start time containers
@@ -666,7 +670,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 	inspectData := make(chan *InspectMetric, len(m.id))
 
 	for _, id := range m.id {
-		m.getInspect(dockerClient, id, &wg, inspectData)
+		go m.getInspect(dockerClient, id, &wg, inspectData)
 	}
 
 	wg.Wait()
@@ -750,6 +754,7 @@ func main() {
 	// Initialize the main structure
 	var metrics *Metrics = &Metrics{}
 	metrics.cacheTTL = 15 * time.Second
+	metrics.lastLogScrape = time.Now()
 	var err error
 
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
