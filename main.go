@@ -35,9 +35,13 @@ type Metrics struct {
 }
 
 type Info struct {
-	name   string
-	state  string
-	status string
+	name           string
+	state          string
+	status         string
+	composeProject string // com.docker.compose.project
+	composeService string // com.docker.compose.service
+	composeWorkDir string // com.docker.compose.project.working_dir
+
 }
 
 type BaseMetrics struct {
@@ -45,8 +49,8 @@ type BaseMetrics struct {
 	cpuTotal           float64
 	cpuUser            float64
 	cpuKernel          float64
-	memTotalBtyes      int
-	memUsageBtyes      int
+	memTotalBytes      int
+	memUsageBytes      int
 	netReceiveBytes    int
 	netReceivePackets  int
 	netTransmitBytes   int
@@ -105,6 +109,9 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 		i.name = strings.Replace(container.Names[0], "/", "", 1)
 		i.state = container.State
 		i.status = container.Status
+		i.composeProject = container.Labels["com.docker.compose.project"]
+		i.composeService = container.Labels["com.docker.compose.service"]
+		i.composeWorkDir = container.Labels["com.docker.compose.project.working_dir"]
 		info[currentId] = &i
 		// Fills an array of container id
 		idArr = append(idArr, currentId)
@@ -172,12 +179,12 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 		memory_limit, ok := memory_stats["limit"].(float64)
 		if ok {
 			memLimit := int(memory_limit)
-			bm.memTotalBtyes = memLimit
+			bm.memTotalBytes = memLimit
 		}
 		memory_usage, ok := memory_stats["usage"].(float64)
 		if ok {
 			memUsage := int(memory_usage)
-			bm.memUsageBtyes = memUsage
+			bm.memUsageBytes = memUsage
 		}
 	}
 
@@ -333,15 +340,29 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 }
 
 // Converting metrics to Prometheus format
-func (m *Metrics) prometheusFormat(metricName, helpText, typeData, id, containerName, hostname string, value any) []string {
+func (m *Metrics) prometheusFormat(metricName, helpText, typeData, id, containerName, composeProject, composeService, composeWorkDir, hostname string, value any) []string {
 	var metricsText []string
 
 	metricsText = append(metricsText, "# HELP "+metricName+" "+helpText)
 	metricsText = append(metricsText, "# TYPE "+metricName+" "+typeData)
-	metricsLine := fmt.Sprintf(
-		"%s{containerId=\"%s\",containerName=\"%s\",hostname=\"%s\"} %v",
-		metricName, id, containerName, hostname, value,
-	)
+
+	// Add main labels
+	labels := fmt.Sprintf("containerId=\"%s\",containerName=\"%s\"", id, containerName)
+
+	// Add compose labels
+	if composeProject != "" {
+		labels += fmt.Sprintf(",composeProject=\"%s\"", composeProject)
+	}
+	if composeService != "" {
+		labels += fmt.Sprintf(",composeService=\"%s\"", composeService)
+	}
+	if composeWorkDir != "" {
+		labels += fmt.Sprintf(",composeWorkDir=\"%s\"", composeWorkDir)
+	}
+	labels += fmt.Sprintf(",hostname=\"%s\"", hostname)
+
+	// Final metrics line
+	metricsLine := fmt.Sprintf("%s{%s} %v", metricName, labels, value)
 	metricsText = append(metricsText, metricsLine)
 
 	return metricsText
@@ -360,25 +381,48 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 	// Get container name
 	containerName := m.info[id].name
 
+	// Get compose labels
+	composeProject := m.info[id].composeProject
+	composeService := m.info[id].composeService
+	composeWorkDir := m.info[id].composeWorkDir
+
 	// Processor
 	data = append(data, m.prometheusFormat(
 		"docker_cpu_usage_total",
 		"Total CPU usage (user and kernel) in seconds",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].cpuTotal,
 	)...)
 
 	data = append(data, m.prometheusFormat(
 		"docker_cpu_usage_user",
 		"User CPU usage in seconds",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].cpuUser,
 	)...)
 
 	data = append(data, m.prometheusFormat(
 		"docker_cpu_usage_kernel",
 		"Kernel CPU usage in seconds",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].cpuKernel,
 	)...)
 
@@ -386,43 +430,79 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 	data = append(data, m.prometheusFormat(
 		"docker_memory_total",
 		"Total memory size in bytes",
-		"gauge", id, containerName, hostname,
-		m.baseMetrics[id].memTotalBtyes,
+		"gauge",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
+		m.baseMetrics[id].memTotalBytes,
 	)...)
 
 	data = append(data, m.prometheusFormat(
 		"docker_memory_usage",
 		"Usage memory size in bytes",
-		"gauge", id, containerName, hostname,
-		m.baseMetrics[id].memUsageBtyes,
+		"gauge",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
+		m.baseMetrics[id].memUsageBytes,
 	)...)
 
 	// Network
 	data = append(data, m.prometheusFormat(
 		"docker_network_received_bytes",
 		"Number of bytes received on the network",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].netReceiveBytes,
 	)...)
 
 	data = append(data, m.prometheusFormat(
 		"docker_network_received_packages",
 		"Number of packages received on the network",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].netReceivePackets,
 	)...)
 
 	data = append(data, m.prometheusFormat(
 		"docker_network_transmit_bytes",
 		"Number of bytes transmitted on the network",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].netTransmitBytes,
 	)...)
 
 	data = append(data, m.prometheusFormat(
 		"docker_network_transmit_packages",
 		"Number of packages transmitted on the network",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].netTransmitPackets,
 	)...)
 
@@ -430,14 +510,26 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 	data = append(data, m.prometheusFormat(
 		"docker_io_read_bytes",
 		"Number of bytes read by the block device",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].ioReadBytes,
 	)...)
 
 	data = append(data, m.prometheusFormat(
 		"docker_io_write_bytes",
 		"Number of bytes write by the block device",
-		"counter", id, containerName, hostname,
+		"counter",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].ioWriteBytes,
 	)...)
 
@@ -445,7 +537,13 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 	data = append(data, m.prometheusFormat(
 		"docker_process_pids_count",
 		"Number of running processes and threads",
-		"gauge", id, containerName, hostname,
+		"gauge",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.baseMetrics[id].pids,
 	)...)
 
@@ -455,21 +553,39 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stdout_count",
 				"Number of logs from stdout stream",
-				"counter", id, containerName, hostname,
+				"counter",
+				id,
+				containerName,
+				composeProject,
+				composeService,
+				composeWorkDir,
+				hostname,
 				m.logMetrics[id].stdout,
 			)...)
 
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stderr_count",
 				"Number of logs from stderr stream",
-				"counter", id, containerName, hostname,
+				"counter",
+				id,
+				containerName,
+				composeProject,
+				composeService,
+				composeWorkDir,
+				hostname,
 				m.logMetrics[id].stderr,
 			)...)
 
 			data = append(data, m.prometheusFormat(
 				"docker_logs_all_count",
 				"Number of logs from all stream",
-				"counter", id, containerName, hostname,
+				"counter",
+				id,
+				containerName,
+				composeProject,
+				composeService,
+				composeWorkDir,
+				hostname,
 				m.logMetrics[id].stdall,
 			)...)
 
@@ -477,7 +593,13 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 				data = append(data, m.prometheusFormat(
 					"docker_logs_custom_count",
 					"Number of logs containing custom regular expression from all streams (by default, containing the error level)",
-					"counter", id, containerName, hostname,
+					"counter",
+					id,
+					containerName,
+					composeProject,
+					composeService,
+					composeWorkDir,
+					hostname,
 					m.logMetrics[id].stdCustom,
 				)...)
 			}
@@ -488,7 +610,13 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 	data = append(data, m.prometheusFormat(
 		"docker_started_time",
 		"Container started time",
-		"gauge", id, containerName, hostname,
+		"gauge",
+		id,
+		containerName,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		hostname,
 		m.inspectMetrics[id],
 	)...)
 
