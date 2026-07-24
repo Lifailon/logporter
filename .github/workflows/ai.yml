@@ -1,0 +1,79 @@
+name: AI generate list of metrics
+
+on:
+  workflow_dispatch:
+    inputs:
+      PR:
+        description: "Create PR"
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest 
+
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v7
+
+      - name: Build image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          tags: lifailon/logporter:latest
+          push: false
+          load: true
+
+      - name: Run logporter container
+        run: |
+          docker run -d --name logporter \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -p 9333:9333 \
+            --restart=always \
+            lifailon/logporter:latest
+
+      - name: Get metrics
+        id: metrics_step
+        run: |
+          echo "METRICS<<EOF" >> $GITHUB_OUTPUT
+          curl -sS http://localhost:9333/metrics >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Generate list of metrics
+        uses: actions/ai-inference@v2
+        id: ai_query
+        with:
+          model: gpt-4.1
+          max-tokens: 4096
+          system-prompt: |
+            You are an automated tool for generating technical documentation.
+            You must parse a list of Prometheus metrics and return a response strictly in Markdown table format without comments.
+            The response must contain a list of unique metrics.
+            The table must consist of three columns: Name, Data type, and Help description.
+          prompt: |
+            ${{ steps.metrics_step.outputs.METRICS }}
+            
+
+      - name: Update README file
+        env:
+          AI_RESPONSE: ${{ steps.ai_query.outputs.response }}
+        run: |
+          echo "$AI_RESPONSE" >> $GITHUB_STEP_SUMMARY
+          sed "/## List of metrics/q" -i README.md
+          echo "$AI_RESPONSE" >> README.md
+
+      - name: Create PR
+        if: ${{ github.event.inputs.PR == 'true' }}
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "update list of metrics"
+          branch: "docs/metrics-list"
+          title: "Update list of metrics."
+          body: "The list of metrics is generated automatically using AI based on the data requested from the exporter."
+          add-paths: |
+            README.md
