@@ -1,6 +1,11 @@
 # logporter
 
-A simple and lightweight alternative to [cAdvisor](https://github.com/google/cadvisor) for getting all basic metrics from Docker containers with support metrics by logs.
+![Docker Hub Pulls](https://img.shields.io/docker/pulls/lifailon/logporter?label=Docker+Hub+Pulls&logo=docker) \
+![Docker Image Size](https://img.shields.io/docker/image-size/lifailon/logporter?label=Docker+Image+Size&logo=docker)
+
+A simple and lightweight alternative to [cAdvisor](https://github.com/google/cadvisor) for extracting basic and custom metrics from Docker containers.
+
+The exporter supports a metric displaying the number of logs over the scrape period. With proper logging configuration and stream separation on the application side, this metric can reflect the actual traffic volume and error rate.
 
 Comparative measurement of CPU and memory usage from `cAdvisor` and `logporter` metrics in 3 hours:
 
@@ -11,82 +16,82 @@ Comparative measurement of CPU and memory usage from `cAdvisor` and `logporter` 
 > [!NOTE]
 > On average, CPU consumption is 15-20 times lower and memory consumption is 10 times lower in the basic metrics mode (including IOps and uptime) compared to `cAdvisor`.
 
-## Why collect log counts?
+## Quick start
 
-- Monitor the frequency and number of errors in logs using a custom query.
-- Compare the load increase with the number of logged messages. If the application does not consume many resources, the number of logged messages will reflect the load increase.
-- Speed ​​up log analysis by displaying at what point in time the most messages were received from the standard and error stream.
-
-> [!WARNING]
-> Receiving metrics data directly affects performance and CPU load may become higher than `cAdvisor`, this directly depends on the number of running containers, so it is recommended to use it with a small number of running containers or for one in log parsing mode.
-
-## Roadmap
-
-- [x] Functions for extracting basic metrics
-- [x] Functions for extracting custom metrics
-- [x] Converting metrics to Prometheus format
-- [x] HTTP server and logging
-- [x] Error handling (check for missing data)
-- [x] Getting data in a goroutine
-- [x] Grafana dashboard
-- [x] Docker image
-- [ ] Testing
-
-## Build
-
-Build the Docker image yourself (optional):
+Clone the repository and launch a pre-configured monitoring stack including Prometheus and Grafana with a single command
 
 ```bash
 git clone https://github.com/Lifailon/logporter
 cd logporter
-docker build -t lifailon/logporter .
-# or build for different architectures
-docker buildx build --platform linux/amd64,linux/arm64 -t lifailon/logporter .
+docker-compose up -d
 ```
 
-## Install
+The exporter is pre-connected to Prometheus, and a Prometheus data source is added to Grafana and a dashboard is connected.
 
-- Run the exporter in a container using an image from [Docker Hub](https://hub.docker.com/r/lifailon/logporter):
+Go to Grafana UI: `http://localhost:3000` and enter `admin`:`admin`.
+
+## Manual configuration
+
+- Build the Docker image yourself (optional):
+
+```bash
+docker build -t lifailon/logporter .
+```
+
+- Run the exporter in a container using a locally built image or one published on [Docker Hub](https://hub.docker.com/r/lifailon/logporter):
 
 ```bash
 docker run -d --name logporter \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -p 9333:9333 \
-  --restart=unless-stopped \
+  --restart=always \
   lifailon/logporter:latest
 ```
 
-Or download the [docker-compose](https://github.com/Lifailon/logporter/blob/main/docker-compose.yml) file:
+Or use [compose](https://github.com/docker/compose) to securely use the docker socket through a proxy:
 
-```bash
-mkdir logporter && cd logporter
-curl -sSL https://raw.githubusercontent.com/Lifailon/logporter/refs/heads/main/docker-compose.yml -o docker-compose.yml
-docker-compose up -d
+```yaml
+services:
+  logporter:
+    image: lifailon/logporter:latest
+    container_name: logporter
+    restart: always
+    ports:
+      - 9333:9333
+    environment:
+      - DOCKER_HOST=tcp://docker-proxy:2375
+
+  docker-proxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: docker-proxy
+    restart: always
+    expose:
+      - 2375
+    environment:
+      - CONTAINERS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
 ```
 
 Use environment variables to configure the exporter:
 
 | Label                       | Type      | Default                        | Description                                                                                           |
 | --------------------------- | --------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `DOCKER_LOG_METRICS`        | `boolean` | `false`                        | Getting the number of messages in logs from all streams                                               |
-| `DOCKER_LOG_CUSTOM_METRICS` | `boolean` | `false`                        | Enable getting custom metrics                                                                         |
-| `DOCKER_LOG_CUSTOM_QUERY`   | `string`  | `\"(err\|error\|ERR\|ERROR)\"` | Custom filter query in regex format (default example is equivalent to `error` level in `json` format) |
+| `DOCKER_LOG_METRICS`        | `boolean` | `true`                         | Getting the number of messages in logs from all streams.                                              |
+| `DOCKER_CACHE_METRICS`      | `boolean` | `15`                           | Caching time for all collected metrics.                                                               |
 | `DOCKER_HOST`               | `string`  | `""`                           | Optional: Use a docker proxy instead of the docker socket mount for additional security.              |
 
-- Connect the new target in the `prometheus.yml` configuration:
+- Connect the new target to the Prometheus configuration file:
 
 ```yml
 scrape_configs:
   - job_name: logporter
-    scrape_interval: 5s
-    scrape_timeout: 1s
+    scrape_interval: 15s
+    scrape_timeout: 2s
     static_configs:
       - targets:
         - localhost:9333
 ```
-
-> [!NOTE]
-> If you are using custom metrics to get log counts, change the polling interval and response timeout settings in Prometheus based on the requests processing time in the exporter logs.
 
 - Import the prepared public [Grafana dashboard](https://grafana.com/grafana/dashboards/23848-docker-exporter-logporter) using the id `23848` or from [json](https://raw.githubusercontent.com/Lifailon/logporter/refs/heads/main/grafana/dashboard.json) file.
 
@@ -117,3 +122,7 @@ groups:
     annotations:
       description: "Reboot container {{ $labels.containerName }} on {{ $labels.hostname }}"
 ```
+
+## List of metrics
+
+nil
