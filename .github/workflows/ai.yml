@@ -8,13 +8,14 @@ on:
         default: false
         type: boolean
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   build:
     runs-on: ubuntu-latest 
+
+    permissions:
+      models: read
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Clone repository
@@ -54,17 +55,17 @@ jobs:
             You must parse a list of Prometheus metrics and return a response strictly in Markdown table format without comments.
             The response must contain a list of unique metrics.
             The table must consist of three columns: Name, Data type, and Help description.
-          prompt: |
-            ${{ steps.metrics_step.outputs.METRICS }}
+          prompt: ${{ steps.metrics_step.outputs.METRICS }}
             
 
       - name: Update README file
         env:
           AI_RESPONSE: ${{ steps.ai_query.outputs.response }}
         run: |
-          echo "$AI_RESPONSE" >> $GITHUB_STEP_SUMMARY
           sed "/## List of metrics/q" -i README.md
           echo "$AI_RESPONSE" >> README.md
+          echo "## List of metrics" >> $GITHUB_STEP_SUMMARY
+          echo "$AI_RESPONSE" >> $GITHUB_STEP_SUMMARY
 
       - name: Create PR
         if: ${{ github.event.inputs.PR == 'true' }}
