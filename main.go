@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 )
 
@@ -26,6 +27,7 @@ type Metrics struct {
 	getLogMetrics  bool
 	logMetrics     map[string]*LogMetrics
 	inspectMetrics map[string]float64
+	imageMetrics   []imageMetric
 	cacheData      []string
 	cacheTime      time.Time
 	cacheTTL       time.Duration
@@ -77,6 +79,11 @@ type InspectMetric struct {
 	startedDate float64
 }
 
+type imageMetric struct {
+	tag  string
+	size int
+}
+
 // Get information about all containers (second param to get all or only started containers)
 func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[string]*Info, []string, int, int) {
 	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: All})
@@ -89,9 +96,6 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 	info := map[string]*Info{}
 	var idArr []string
 	for _, container := range containers {
-		// Debug output container info
-		// godump.Dump(container)
-
 		// Fills the info structure
 		i := Info{}
 		i.name = strings.Replace(container.Names[0], "/", "", 1)
@@ -139,11 +143,8 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	err = json.Unmarshal(jsonStats, &data)
 	if err != nil {
 		log.Println("Failed to unmarshal JSON stats: %w", err)
+
 	}
-
-	// Debug output metrics from stats
-	// godump.Dump(data)
-
 	// Extract data and fill structure
 	var bm BaseMetrics = BaseMetrics{}
 
@@ -303,10 +304,6 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 		log.Println("Failed to inspect container: %w", err)
 		return
 	}
-
-	// Debug output inspect data
-	// godump.Dump(inspect)
-
 	// Get started time
 	startedDate := inspect.State.StartedAt
 	// Converting string to time type
@@ -324,6 +321,36 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	defer wg.Done()
 	results <- &data
 }
+
+// Get images and volumes count and size
+func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) {
+	var imageMetrics []imageMetric
+	images, err := dockerClient.ImageList(context.Background(), image.ListOptions{})
+	if err != nil {
+		return imageMetrics, fmt.Errorf("Error getting iamge list: %w", err)
+	}
+	for _, image := range images {
+		tag := "none"
+		if len(image.RepoTags) > 0 {
+			tag = image.RepoTags[0]
+		}
+		data := imageMetric{
+			tag:  tag,
+			size: int(image.Size),
+		}
+		imageMetrics = append(imageMetrics, data)
+	}
+	return imageMetrics, nil
+}
+
+// // Get images and volumes count and size
+// func (m *Metrics) getVolumes(dockerClient *client.Client) (volume.ListResponse, error) {
+// 	volumes, err := dockerClient.VolumeList(context.Background(), volume.ListOptions{})
+// 	if err != nil {
+// 		return volumes, fmt.Errorf("Error getting volume list: %w", err)
+// 	}
+// 	return volumes, nil
+// }
 
 // Converting metrics to Prometheus format
 func (m *Metrics) prometheusFormat(metricName, helpText, typeData, id, containerName, composeProject, composeService, composeWorkDir, hostname string, value any) []string {
@@ -682,8 +709,13 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 		m.inspectMetrics[data.id] = data.startedDate
 	}
 
-	// Debug output main structure
-	// godump.Dump(m)
+	var err error
+	m.imageMetrics, err = m.getImages(dockerClient)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// m.getVolumes(dockerClient)
 
 	// Get metrics in Prometheus format
 	var data []string
@@ -699,6 +731,15 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 	data = append(data, "# TYPE docker_containers_down_count gauge")
 	metricText = fmt.Sprintf("docker_containers_down_count{hostname=\"%s\"} %v", hostname, m.containersDown)
 	data = append(data, metricText)
+
+	data = append(data, "")
+
+	for _, img := range m.imageMetrics {
+		data = append(data, "# HELP docker_image_size Image size")
+		data = append(data, "# TYPE docker_image_size gauge")
+		metricText = fmt.Sprintf("docker_image_size{hostname=\"%s\",tag=\"%s\"} %v", hostname, img.tag, img.size)
+		data = append(data, metricText)
+	}
 
 	data = append(data, "")
 
