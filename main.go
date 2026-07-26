@@ -97,6 +97,7 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 		i.name = strings.Replace(container.Names[0], "/", "", 1)
 		i.state = container.State
 		i.status = container.Status
+		// #8 Add compose labels
 		i.composeProject = container.Labels["com.docker.compose.project"]
 		i.composeService = container.Labels["com.docker.compose.service"]
 		i.composeWorkDir = container.Labels["com.docker.compose.project.working_dir"]
@@ -252,7 +253,7 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	logsOptions := container.LogsOptions{
 		ShowStdout: stdout,
 		ShowStderr: stderr,
-		Since:      fmt.Sprintf("%d", since.Unix()),
+		Since:      fmt.Sprintf("%d", since.Unix()), // #10 Add the number of records for the scrape interval
 	}
 
 	// Get log content
@@ -269,9 +270,6 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 		log.Println("Failed to read container logs: %w", err)
 		return
 	}
-
-	// Debug output logs
-	// fmt.Println(string(dataLogs))
 
 	// Convert bytes to text and get array from rows
 	lines := strings.Split(string(dataLogs), "\n")
@@ -314,10 +312,11 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	results <- &data
 }
 
-// Get images and volumes count and size
+// #12 Get images count and size
 func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) {
 	var imageMetrics []imageMetric
-	images, err := dockerClient.ImageList(context.Background(), image.ListOptions{})
+	imageOptions := image.ListOptions{SharedSize: true}
+	images, err := dockerClient.ImageList(context.Background(), imageOptions)
 	if err != nil {
 		return imageMetrics, fmt.Errorf("Error getting iamge list: %w", err)
 	}
@@ -326,23 +325,19 @@ func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) 
 		if len(image.RepoTags) > 0 {
 			tag = image.RepoTags[0]
 		}
+		size := int(image.Size)
+		sharedSize := int(image.SharedSize)
+		if sharedSize > 0 {
+			size = size - sharedSize
+		}
 		data := imageMetric{
 			tag:  tag,
-			size: int(image.Size),
+			size: size,
 		}
 		imageMetrics = append(imageMetrics, data)
 	}
 	return imageMetrics, nil
 }
-
-// // Get images and volumes count and size
-// func (m *Metrics) getVolumes(dockerClient *client.Client) (volume.ListResponse, error) {
-// 	volumes, err := dockerClient.VolumeList(context.Background(), volume.ListOptions{})
-// 	if err != nil {
-// 		return volumes, fmt.Errorf("Error getting volume list: %w", err)
-// 	}
-// 	return volumes, nil
-// }
 
 // Converting metrics to Prometheus format
 func (m *Metrics) prometheusFormat(metricName, helpText, typeData, id, containerName, composeProject, composeService, composeWorkDir, hostname string, value any) []string {
@@ -707,13 +702,11 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 		fmt.Println(err)
 	}
 
-	// m.getVolumes(dockerClient)
-
 	// Get metrics in Prometheus format
 	var data []string
 
 	for _, img := range m.imageMetrics {
-		data = append(data, "# HELP docker_image_size Image size")
+		data = append(data, "# HELP docker_image_size The size of the image minus the layer shared by other images")
 		data = append(data, "# TYPE docker_image_size gauge")
 		metricText := fmt.Sprintf("docker_image_size{hostname=\"%s\",tag=\"%s\"} %v", hostname, img.tag, img.size)
 		data = append(data, metricText)
@@ -721,6 +714,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 
 	data = append(data, "")
 
+	// #9 Get status for all containers
 	for id, info := range m.info {
 		var upValue int
 		if info.state == "running" {
@@ -813,6 +807,7 @@ func main() {
 	httpServerMux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 
+		// #10 Using cache
 		metrics.cacheMutex.RLock()
 		cacheValid := len(metrics.cacheData) > 0 && time.Since(metrics.cacheTime) < metrics.cacheTTL
 		metrics.cacheMutex.RUnlock()
