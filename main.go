@@ -19,8 +19,6 @@ import (
 )
 
 type Metrics struct {
-	containersUp   int
-	containersDown int
 	id             []string
 	info           map[string]*Info
 	baseMetrics    map[string]*BaseMetrics
@@ -85,14 +83,12 @@ type imageMetric struct {
 }
 
 // Get information about all containers (second param to get all or only started containers)
-func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[string]*Info, []string, int, int) {
+func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[string]*Info, []string) {
 	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: All})
 	if err != nil {
 		log.Println("Failed to get container list: %w", err)
-		return nil, nil, 0, 0
+		return nil, nil
 	}
-	containersUp := 0
-	containersDown := 0
 	info := map[string]*Info{}
 	var idArr []string
 	for _, container := range containers {
@@ -108,16 +104,12 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 		currentId := container.ID
 		info[currentId] = &i
 
+		// Fills an array of container id for get metrics (skip for stopped)
 		if container.State == "running" {
-			containersUp++
-			// Fills an array of container id for get metrics
 			idArr = append(idArr, currentId)
-		} else {
-			// Skip get metrics
-			containersDown++
 		}
 	}
-	return info, idArr, containersUp, containersDown
+	return info, idArr
 }
 
 // Get metric list for specified container by id
@@ -626,7 +618,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 // Main function for getting metrics
 func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []string {
 	// Get a list of containers with status information and all container ID array
-	m.info, m.id, m.containersUp, m.containersDown = m.getContainers(dockerClient, true)
+	m.info, m.id = m.getContainers(dockerClient, true)
 
 	// Create a waiting group and a buffered channel to store data from goroutines
 	var wg sync.WaitGroup
@@ -720,24 +712,10 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 	// Get metrics in Prometheus format
 	var data []string
 
-	data = append(data, "# HELP docker_containers_up_count Number of running containers")
-	data = append(data, "# TYPE docker_containers_up_count gauge")
-	metricText := fmt.Sprintf("docker_containers_up_count{hostname=\"%s\"} %v", hostname, m.containersUp)
-	data = append(data, metricText)
-
-	data = append(data, "")
-
-	data = append(data, "# HELP docker_containers_down_count Number of stopped containers")
-	data = append(data, "# TYPE docker_containers_down_count gauge")
-	metricText = fmt.Sprintf("docker_containers_down_count{hostname=\"%s\"} %v", hostname, m.containersDown)
-	data = append(data, metricText)
-
-	data = append(data, "")
-
 	for _, img := range m.imageMetrics {
 		data = append(data, "# HELP docker_image_size Image size")
 		data = append(data, "# TYPE docker_image_size gauge")
-		metricText = fmt.Sprintf("docker_image_size{hostname=\"%s\",tag=\"%s\"} %v", hostname, img.tag, img.size)
+		metricText := fmt.Sprintf("docker_image_size{hostname=\"%s\",tag=\"%s\"} %v", hostname, img.tag, img.size)
 		data = append(data, metricText)
 	}
 
