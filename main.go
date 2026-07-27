@@ -13,24 +13,28 @@ import (
 	"sync"
 	"time"
 
+	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 )
 
 type Metrics struct {
-	id             []string
-	info           map[string]*Info
-	baseMetrics    map[string]*BaseMetrics
-	getLogMetrics  bool
-	logMetrics     map[string]*LogMetrics
-	inspectMetrics map[string]float64
-	imageMetrics   []imageMetric
-	cacheData      []string
-	cacheTime      time.Time
-	cacheTTL       time.Duration
-	cacheMutex     sync.RWMutex
-	lastLogScrape  time.Time
+	id               []string
+	info             map[string]*Info
+	baseMetrics      map[string]*BaseMetrics
+	getLogMetrics    bool
+	logMetrics       map[string]*LogMetrics
+	inspectMetrics   map[string]float64
+	imageMetrics     []imageMetric
+	volumeMetrics    []volumeMetric
+	cacheData        []string
+	cacheTime        time.Time
+	cacheTTL         time.Duration
+	cacheMutex       sync.RWMutex
+	lastLogScrape    time.Time
+	getVolumeMetrics bool
+	volumeCache      time.Duration
 }
 
 type Info struct {
@@ -73,13 +77,20 @@ type LogMetric struct {
 }
 
 type InspectMetric struct {
-	id          string
-	startedDate float64
+	id        string
+	timestamp float64
 }
 
 type imageMetric struct {
 	tag  string
 	size int
+}
+
+type volumeMetric struct {
+	name   string
+	driver string
+	size   int64
+	usage  int64
 }
 
 // Get information about all containers (second param to get all or only started containers)
@@ -243,12 +254,13 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 		}
 	}
 
-	// defer wg.Done()
 	return &bm
 }
 
 // Get line count from logs for specified container by id
 func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bool, stderr bool, since time.Time, wg *sync.WaitGroup, results chan *LogMetric) {
+	defer wg.Done()
+
 	// Fill in options to read container logs
 	logsOptions := container.LogsOptions{
 		ShowStdout: stdout,
@@ -283,21 +295,21 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 		value:  countLogs,
 	}
 
-	defer wg.Done()
 	results <- &logMetric
 }
 
 // Get metrics from inspect method
 func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric) {
+	defer wg.Done()
 	inspect, err := dockerClient.ContainerInspect(context.Background(), id)
 	if err != nil {
 		log.Println("Failed to inspect container: %w", err)
 		return
 	}
 	// Get started time
-	startedDate := inspect.State.StartedAt
+	StartedAt := inspect.State.StartedAt
 	// Converting string to time type
-	startedTime, err := time.Parse(time.RFC3339Nano, startedDate)
+	startedTime, err := time.Parse(time.RFC3339Nano, StartedAt)
 	if err != nil {
 		log.Println("Failed to parse started time: %w", err)
 		return
@@ -305,10 +317,9 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	// Converting to timestamp
 	startedTimestamp := float64(startedTime.Unix())
 	data := InspectMetric{
-		id:          id,
-		startedDate: startedTimestamp,
+		id:        id,
+		timestamp: startedTimestamp,
 	}
-	defer wg.Done()
 	results <- &data
 }
 
@@ -318,7 +329,7 @@ func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) 
 	imageOptions := image.ListOptions{SharedSize: true}
 	images, err := dockerClient.ImageList(context.Background(), imageOptions)
 	if err != nil {
-		return imageMetrics, fmt.Errorf("Error getting iamge list: %w", err)
+		return nil, fmt.Errorf("Error getting image list: %w", err)
 	}
 	for _, image := range images {
 		tag := "none"
@@ -337,6 +348,32 @@ func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) 
 		imageMetrics = append(imageMetrics, data)
 	}
 	return imageMetrics, nil
+}
+
+func (m *Metrics) getVolumes(dockerClient *client.Client) ([]volumeMetric, error) {
+	diskOptions := types.DiskUsageOptions{}
+	diskUsage, err := dockerClient.DiskUsage(context.Background(), diskOptions)
+	if err != nil {
+		return nil, fmt.Errorf("Error getting volume list: %w", err)
+	}
+	// Allocating memory for a slice
+	volumeMetrics := make([]volumeMetric, 0, len(diskUsage.Volumes))
+	for _, volume := range diskUsage.Volumes {
+		var size int64
+		var usage int64
+		// Protection from nil
+		if volume.UsageData != nil {
+			size = volume.UsageData.Size
+			usage = volume.UsageData.RefCount
+		}
+		volumeMetrics = append(volumeMetrics, volumeMetric{
+			name:   volume.Name,
+			driver: volume.Driver,
+			size:   size,
+			usage:  usage,
+		})
+	}
+	return volumeMetrics, nil
 }
 
 // Converting metrics to Prometheus format
@@ -693,7 +730,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 
 	m.inspectMetrics = map[string]float64{}
 	for data := range inspectData {
-		m.inspectMetrics[data.id] = data.startedDate
+		m.inspectMetrics[data.id] = data.timestamp
 	}
 
 	var err error
@@ -708,7 +745,16 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 	for _, img := range m.imageMetrics {
 		data = append(data, "# HELP docker_image_size The size of the image minus the layer shared by other images")
 		data = append(data, "# TYPE docker_image_size gauge")
-		metricText := fmt.Sprintf("docker_image_size{hostname=\"%s\",tag=\"%s\"} %v", hostname, img.tag, img.size)
+		metricText := fmt.Sprintf("docker_image_size{hostname=\"%s\",imageTag=\"%s\"} %v", hostname, img.tag, img.size)
+		data = append(data, metricText)
+	}
+
+	data = append(data, "")
+
+	for _, vol := range m.volumeMetrics {
+		data = append(data, "# HELP docker_volume_size The volume size")
+		data = append(data, "# TYPE docker_volume_size gauge")
+		metricText := fmt.Sprintf("docker_volume_size{hostname=\"%s\",volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\"} %v", hostname, vol.name, vol.driver, vol.usage, vol.size)
 		data = append(data, metricText)
 	}
 
@@ -799,6 +845,33 @@ func main() {
 	// Get hostname
 	// hostname, _ := os.Hostname()
 	hostname := metrics.getHostname(dockerClient)
+
+	// Background worker for volume metrics
+	metrics.getVolumeMetrics = true
+	getVolumeMetrics := os.Getenv("DOCKER_VOLUME_METRICS")
+	if strings.ToLower(getVolumeMetrics) == "false" {
+		metrics.getVolumeMetrics = false
+	}
+	if metrics.getVolumeMetrics {
+		metrics.volumeCache = 1 * time.Minute
+		envCache := os.Getenv("DOCKER_CACHE_VOLUME_METRICS")
+		if envCache != "" {
+			parsed, err := strconv.Atoi(envCache)
+			if err == nil && parsed > 0 {
+				metrics.volumeCache = time.Duration(parsed) * time.Minute
+			}
+		}
+		go func() {
+			for {
+				var err error
+				metrics.volumeMetrics, err = metrics.getVolumes(dockerClient)
+				if err != nil {
+					fmt.Println(err)
+				}
+				time.Sleep(metrics.volumeCache)
+			}
+		}()
+	}
 
 	// Create HTTP server
 	httpServerMux := http.NewServeMux()
