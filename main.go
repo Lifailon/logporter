@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -378,14 +379,17 @@ func (m *Metrics) getVolumesMetrics(dockerClient *client.Client) ([]volumeMetric
 	return volumeMetrics, nil
 }
 
-func (m *Metrics) updateVolumesMetrics(dockerClient *client.Client) {
+func (m *Metrics) updateVolumesMetrics(dockerClient *client.Client, logger *slog.Logger) {
 	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
 	if err != nil {
 		fmt.Println(err)
 	}
 	m.volumeMetrics = volumeMetrics
 	volumeCount := len(m.volumeMetrics)
-	fmt.Println("Background worker: collected information on " + strconv.Itoa(volumeCount) + " volumes")
+	logger.Info("collecting metrics",
+		"source", "background worker",
+		"volumes", strconv.Itoa(volumeCount),
+	)
 }
 
 // Converting metrics to Prometheus format
@@ -810,21 +814,23 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 }
 
 // Logging http server requests
-func (m *Metrics) loggingMiddleware(next http.Handler) http.Handler {
-	logger := log.New(os.Stdout, "", log.LstdFlags)
-	log := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (m *Metrics) loggingMiddleware(next http.Handler, logger *slog.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		logger.Printf("%s request on %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
+		logger.Info("request received",
+			"source", r.RemoteAddr,
+			"method", r.Method,
+			"path", r.URL.Path,
+		)
 		next.ServeHTTP(w, r)
 		containersCount := len(m.id)
-		if m.cacheValid {
-			logger.Printf("Retrieved information on %d containers from cache", containersCount)
-		} else {
-			logger.Printf("Collected information on %d containers", containersCount)
-		}
-		logger.Printf("Response time %v from %s", time.Since(start)/1000000*1000000, r.RemoteAddr)
+		logger.Info("response sent",
+			"source", r.RemoteAddr,
+			"duration", time.Since(start).Round(time.Millisecond),
+			"cache", m.cacheValid,
+			"containers", containersCount,
+		)
 	})
-	return log
 }
 
 // Get hostname from Docker Info method
@@ -843,7 +849,7 @@ func main() {
 
 	// Get environment variables
 	metrics.getLogMetrics = true
-	getLogMetrics := os.Getenv("DOCKER_LOG_METRICS")
+	getLogMetrics := os.Getenv("DOCKER_METRICS_LOG")
 	if strings.ToLower(getLogMetrics) == "false" {
 		metrics.getLogMetrics = false
 	}
@@ -852,7 +858,7 @@ func main() {
 	}
 
 	metrics.cacheTTL = 15 * time.Second
-	envCache := os.Getenv("DOCKER_CACHE_METRICS")
+	envCache := os.Getenv("DOCKER_METRICS_CACHE")
 	if envCache != "" {
 		parsed, err := strconv.Atoi(envCache)
 		if err == nil && parsed > 0 {
@@ -871,15 +877,17 @@ func main() {
 	// hostname, _ := os.Hostname()
 	hostname := metrics.getHostname(dockerClient)
 
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	// Background worker for volume metrics
 	metrics.getVolumeMetrics = true
-	getVolumeMetrics := os.Getenv("DOCKER_VOLUME_METRICS")
+	getVolumeMetrics := os.Getenv("DOCKER_METRICS_VOLUME")
 	if strings.ToLower(getVolumeMetrics) == "false" {
 		metrics.getVolumeMetrics = false
 	}
 	if metrics.getVolumeMetrics {
 		metrics.volumeCache = 1 * time.Minute
-		envCache := os.Getenv("DOCKER_CACHE_VOLUME_METRICS")
+		envCache := os.Getenv("DOCKER_METRICS_VOLUME_CACHE")
 		if envCache != "" {
 			parsed, err := strconv.Atoi(envCache)
 			if err == nil && parsed > 0 {
@@ -887,11 +895,11 @@ func main() {
 			}
 		}
 		go func() {
-			metrics.updateVolumesMetrics(dockerClient)
+			metrics.updateVolumesMetrics(dockerClient, logger)
 			ticker := time.NewTicker(metrics.volumeCache)
 			defer ticker.Stop()
 			for range ticker.C {
-				metrics.updateVolumesMetrics(dockerClient)
+				metrics.updateVolumesMetrics(dockerClient, logger)
 			}
 		}()
 	}
@@ -927,7 +935,7 @@ func main() {
 		}
 	})
 
-	logSrv := metrics.loggingMiddleware(httpServerMux)
+	logSrv := metrics.loggingMiddleware(httpServerMux, logger)
 
 	// Start HTTP server
 	port := "9333"
