@@ -32,6 +32,7 @@ type Metrics struct {
 	cacheTime        time.Time
 	cacheTTL         time.Duration
 	cacheMutex       sync.RWMutex
+	cacheValid       bool
 	lastLogScrape    time.Time
 	getVolumeMetrics bool
 	volumeCache      time.Duration
@@ -324,7 +325,7 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 }
 
 // Get list of images and their sizes
-func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) {
+func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, error) {
 	var imageMetrics []imageMetric
 	imageOptions := image.ListOptions{SharedSize: true}
 	images, err := dockerClient.ImageList(context.Background(), imageOptions)
@@ -351,7 +352,7 @@ func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) 
 }
 
 // Get list of volumes and their sizes
-func (m *Metrics) getVolumes(dockerClient *client.Client) ([]volumeMetric, error) {
+func (m *Metrics) getVolumesMetrics(dockerClient *client.Client) ([]volumeMetric, error) {
 	diskOptions := types.DiskUsageOptions{}
 	diskUsage, err := dockerClient.DiskUsage(context.Background(), diskOptions)
 	if err != nil {
@@ -377,11 +378,21 @@ func (m *Metrics) getVolumes(dockerClient *client.Client) ([]volumeMetric, error
 	return volumeMetrics, nil
 }
 
+func (m *Metrics) updateVolumesMetrics(dockerClient *client.Client) {
+	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
+	if err != nil {
+		fmt.Println(err)
+	}
+	m.volumeMetrics = volumeMetrics
+	volumeCount := len(m.volumeMetrics)
+	fmt.Println("Background worker: collected information on " + strconv.Itoa(volumeCount) + " volumes")
+}
+
 // Converting metrics to Prometheus format
 func (m *Metrics) prometheusFormat(metricName, helpText, typeData, id, containerName, composeProject, composeService, composeWorkDir, hostname string, value any) []string {
 	var metricsText []string
 
-	if metricName != "" && helpText != "" {
+	if helpText != "" && typeData != "" {
 		metricsText = append(metricsText, "# HELP "+metricName+" "+helpText)
 		metricsText = append(metricsText, "# TYPE "+metricName+" "+typeData)
 	}
@@ -741,7 +752,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 
 	// #12 Get image metrics
 	var err error
-	m.imageMetrics, err = m.getImages(dockerClient)
+	m.imageMetrics, err = m.getImagesMetrics(dockerClient)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -775,9 +786,9 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 			upValue = 1
 		}
 		data = append(data, m.prometheusFormat(
-			"",
-			"",
-			"gauge",
+			"docker_container_status",
+			"", // skip help
+			"", // skip data type
 			id,
 			info.name,
 			info.composeProject,
@@ -799,12 +810,18 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 }
 
 // Logging http server requests
-func loggingMiddleware(next http.Handler) http.Handler {
+func (m *Metrics) loggingMiddleware(next http.Handler) http.Handler {
 	logger := log.New(os.Stdout, "", log.LstdFlags)
 	log := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		logger.Printf("%s request on %s from %s", r.Method, r.URL.Path, r.RemoteAddr)
 		next.ServeHTTP(w, r)
+		containersCount := len(m.id)
+		if m.cacheValid {
+			logger.Printf("Retrieved information on %d containers from cache", containersCount)
+		} else {
+			logger.Printf("Collected information on %d containers", containersCount)
+		}
 		logger.Printf("Response time %v from %s", time.Since(start)/1000000*1000000, r.RemoteAddr)
 	})
 	return log
@@ -870,14 +887,11 @@ func main() {
 			}
 		}
 		go func() {
-			for {
-				var err error
-				volumeMetrics, err := metrics.getVolumes(dockerClient)
-				if err != nil {
-					fmt.Println(err)
-				}
-				metrics.volumeMetrics = volumeMetrics
-				time.Sleep(metrics.volumeCache)
+			metrics.updateVolumesMetrics(dockerClient)
+			ticker := time.NewTicker(metrics.volumeCache)
+			defer ticker.Stop()
+			for range ticker.C {
+				metrics.updateVolumesMetrics(dockerClient)
 			}
 		}()
 	}
@@ -891,11 +905,11 @@ func main() {
 
 		// #10 Using cache
 		metrics.cacheMutex.RLock()
-		cacheValid := len(metrics.cacheData) > 0 && time.Since(metrics.cacheTime) < metrics.cacheTTL
+		metrics.cacheValid = len(metrics.cacheData) > 0 && time.Since(metrics.cacheTime) < metrics.cacheTTL
 		metrics.cacheMutex.RUnlock()
 
 		var metricsData []string
-		if cacheValid {
+		if metrics.cacheValid {
 			metrics.cacheMutex.RLock()
 			metricsData = metrics.cacheData
 			metrics.cacheMutex.RUnlock()
@@ -913,11 +927,11 @@ func main() {
 		}
 	})
 
-	logSrv := loggingMiddleware(httpServerMux)
+	logSrv := metrics.loggingMiddleware(httpServerMux)
 
 	// Start HTTP server
 	port := "9333"
-	fmt.Println("Exporter started on " + port + " port.")
+	fmt.Println("Exporter started on " + port + " port")
 	err = http.ListenAndServe(":"+port, logSrv)
 	if err != nil {
 		log.Fatalf("Failed to start HTTP server: %v", err)
