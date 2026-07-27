@@ -97,7 +97,7 @@ type volumeMetric struct {
 func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[string]*Info, []string) {
 	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: All})
 	if err != nil {
-		log.Println("Failed to get container list: %w", err)
+		log.Printf("Failed to get container list: %v", err)
 		return nil, nil
 	}
 	info := map[string]*Info{}
@@ -128,7 +128,7 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMetrics {
 	stats, err := dockerClient.ContainerStatsOneShot(context.Background(), id)
 	if err != nil {
-		log.Println("Failed to get container stats: %w", err)
+		log.Printf("Failed to get container stats: %v", err)
 		return nil
 	}
 	defer stats.Body.Close()
@@ -136,7 +136,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	// Read statistics
 	jsonStats, err := io.ReadAll(stats.Body)
 	if err != nil {
-		log.Println("Failed to read container stats: %w", err)
+		log.Printf("Failed to read container stats: %v", err)
 		return nil
 	}
 
@@ -146,7 +146,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	// Parsing json and fill in map
 	err = json.Unmarshal(jsonStats, &data)
 	if err != nil {
-		log.Println("Failed to unmarshal JSON stats: %w", err)
+		log.Printf("Failed to unmarshal JSON stats: %v", err)
 
 	}
 	// Extract data and fill structure
@@ -271,7 +271,7 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	// Get log content
 	logs, err := dockerClient.ContainerLogs(context.Background(), id, logsOptions)
 	if err != nil {
-		log.Println("Failed to get container logs: %w", err)
+		log.Printf("Failed to get container logs: %v", err)
 		return
 	}
 	defer logs.Close()
@@ -279,7 +279,7 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	// Read and parsing json
 	dataLogs, err := io.ReadAll(logs)
 	if err != nil {
-		log.Println("Failed to read container logs: %w", err)
+		log.Printf("Failed to read container logs: %v", err)
 		return
 	}
 
@@ -303,7 +303,7 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	defer wg.Done()
 	inspect, err := dockerClient.ContainerInspect(context.Background(), id)
 	if err != nil {
-		log.Println("Failed to inspect container: %w", err)
+		log.Printf("Failed to inspect container: %v", err)
 		return
 	}
 	// Get started time
@@ -311,7 +311,7 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	// Converting string to time type
 	startedTime, err := time.Parse(time.RFC3339Nano, StartedAt)
 	if err != nil {
-		log.Println("Failed to parse started time: %w", err)
+		log.Printf("Failed to parse started time: %v", err)
 		return
 	}
 	// Converting to timestamp
@@ -323,13 +323,13 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	results <- &data
 }
 
-// #12 Get images count and size
+// Get list of images and their sizes
 func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) {
 	var imageMetrics []imageMetric
 	imageOptions := image.ListOptions{SharedSize: true}
 	images, err := dockerClient.ImageList(context.Background(), imageOptions)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting image list: %w", err)
+		return nil, fmt.Errorf("Error getting image list: %v", err)
 	}
 	for _, image := range images {
 		tag := "none"
@@ -350,11 +350,12 @@ func (m *Metrics) getImages(dockerClient *client.Client) ([]imageMetric, error) 
 	return imageMetrics, nil
 }
 
+// Get list of volumes and their sizes
 func (m *Metrics) getVolumes(dockerClient *client.Client) ([]volumeMetric, error) {
 	diskOptions := types.DiskUsageOptions{}
 	diskUsage, err := dockerClient.DiskUsage(context.Background(), diskOptions)
 	if err != nil {
-		return nil, fmt.Errorf("Error getting volume list: %w", err)
+		return nil, fmt.Errorf("Error getting volume list: %v", err)
 	}
 	// Allocating memory for a slice
 	volumeMetrics := make([]volumeMetric, 0, len(diskUsage.Volumes))
@@ -380,8 +381,10 @@ func (m *Metrics) getVolumes(dockerClient *client.Client) ([]volumeMetric, error
 func (m *Metrics) prometheusFormat(metricName, helpText, typeData, id, containerName, composeProject, composeService, composeWorkDir, hostname string, value any) []string {
 	var metricsText []string
 
-	metricsText = append(metricsText, "# HELP "+metricName+" "+helpText)
-	metricsText = append(metricsText, "# TYPE "+metricName+" "+typeData)
+	if metricName != "" && helpText != "" {
+		metricsText = append(metricsText, "# HELP "+metricName+" "+helpText)
+		metricsText = append(metricsText, "# TYPE "+metricName+" "+typeData)
+	}
 
 	// Add main labels
 	labels := fmt.Sprintf("containerId=\"%s\",containerName=\"%s\"", id, containerName)
@@ -717,7 +720,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 		m.lastLogScrape = time.Now()
 	}
 
-	// Get start time containers
+	// Get start time containers from inspect
 	wg.Add(len(m.id))
 	inspectData := make(chan *InspectMetric, len(m.id))
 
@@ -733,42 +736,47 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 		m.inspectMetrics[data.id] = data.timestamp
 	}
 
+	// Get metrics in Prometheus format
+	var data []string
+
+	// #12 Get image metrics
 	var err error
 	m.imageMetrics, err = m.getImages(dockerClient)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	// Get metrics in Prometheus format
-	var data []string
-
+	// Fill in the image metrics
+	data = append(data, "# HELP docker_image_size The size of the image minus the layer shared by other images")
+	data = append(data, "# TYPE docker_image_size gauge")
 	for _, img := range m.imageMetrics {
-		data = append(data, "# HELP docker_image_size The size of the image minus the layer shared by other images")
-		data = append(data, "# TYPE docker_image_size gauge")
-		metricText := fmt.Sprintf("docker_image_size{hostname=\"%s\",imageTag=\"%s\"} %v", hostname, img.tag, img.size)
+		metricText := fmt.Sprintf("docker_image_size{imageTag=\"%s\",hostname=\"%s\"} %v", img.tag, hostname, img.size)
 		data = append(data, metricText)
 	}
-
 	data = append(data, "")
 
-	for _, vol := range m.volumeMetrics {
-		data = append(data, "# HELP docker_volume_size The volume size")
+	// #12 Fill in the volume metrics
+	if m.getVolumeMetrics {
+		data = append(data, "# HELP docker_volume_size The size of the volumes and the number of containers associated with it in the volumeUsage tag")
 		data = append(data, "# TYPE docker_volume_size gauge")
-		metricText := fmt.Sprintf("docker_volume_size{hostname=\"%s\",volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\"} %v", hostname, vol.name, vol.driver, vol.usage, vol.size)
-		data = append(data, metricText)
+		for _, vol := range m.volumeMetrics {
+			metricText := fmt.Sprintf("docker_volume_size{volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\",hostname=\"%s\"} %v", vol.name, vol.driver, vol.usage, hostname, vol.size)
+			data = append(data, metricText)
+		}
+		data = append(data, "")
 	}
 
-	data = append(data, "")
-
-	// #9 Get status for all containers
+	// #9 Fill in the status for all containers
+	data = append(data, "# HELP docker_container_status Container status: running (1) or stopped (0)")
+	data = append(data, "# TYPE docker_container_status gauge")
 	for id, info := range m.info {
 		var upValue int
 		if info.state == "running" {
 			upValue = 1
 		}
 		data = append(data, m.prometheusFormat(
-			"docker_container_status",
-			"Container status: running (1) or stopped (0)",
+			"",
+			"",
 			"gauge",
 			id,
 			info.name,
@@ -782,6 +790,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 
 	data = append(data, "")
 
+	// Fill in the base and logs metrics
 	for _, id := range m.id {
 		data = append(data, m.prometheusMetrics(id, hostname)...)
 	}
@@ -805,7 +814,7 @@ func loggingMiddleware(next http.Handler) http.Handler {
 func (m *Metrics) getHostname(dockerClient *client.Client) string {
 	info, err := dockerClient.Info(context.Background())
 	if err != nil {
-		log.Println("Failed to get hostname: %w", err)
+		log.Printf("Failed to get hostname: %v", err)
 	}
 	return info.Name
 }
@@ -836,7 +845,6 @@ func main() {
 
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	client.NewClientWithOpts()
 	if err != nil {
 		log.Fatalf("Failed to create Docker client: %v", err)
 	}
@@ -864,10 +872,11 @@ func main() {
 		go func() {
 			for {
 				var err error
-				metrics.volumeMetrics, err = metrics.getVolumes(dockerClient)
+				volumeMetrics, err := metrics.getVolumes(dockerClient)
 				if err != nil {
 					fmt.Println(err)
 				}
+				metrics.volumeMetrics = volumeMetrics
 				time.Sleep(metrics.volumeCache)
 			}
 		}()
