@@ -36,6 +36,7 @@ type Metrics struct {
 	cacheValid       bool
 	lastLogScrape    time.Time
 	getVolumeMetrics bool
+	logCache         time.Duration
 	volumeCache      time.Duration
 }
 
@@ -68,7 +69,6 @@ type BaseMetrics struct {
 type LogMetrics struct {
 	stdout int
 	stderr int
-	stdall int
 }
 
 type LogMetric struct {
@@ -267,7 +267,11 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	logsOptions := container.LogsOptions{
 		ShowStdout: stdout,
 		ShowStderr: stderr,
-		Since:      fmt.Sprintf("%d", since.Unix()), // #10 Add the number of records for the scrape interval
+	}
+
+	// #10 Add the number of records for the scrape interval (since the last data collection)
+	if !since.IsZero() {
+		logsOptions.Since = fmt.Sprintf("%d", since.Unix())
 	}
 
 	// Get log content
@@ -290,6 +294,17 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	// Get line count
 	countLogs := len(lines) - 1
 
+	// scanner := bufio.NewScanner(logs)
+	// countLogs := 0
+	// for scanner.Scan() {
+	// 	countLogs++
+	// }
+	// err = scanner.Err()
+	// if err != nil {
+	// 	log.Printf("Failed to read container logs: %v", err)
+	// 	return
+	// }
+
 	logMetric := LogMetric{
 		id:     id,
 		stdout: stdout,
@@ -298,6 +313,45 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	}
 
 	results <- &logMetric
+}
+
+func (m *Metrics) updateLogsMetrics(dockerClient *client.Client, logger *slog.Logger) {
+	var wg sync.WaitGroup
+
+	// Create x2 groups for logs (stdout and stderr streams)
+	logBufferSize := len(m.id) * 2
+	wg.Add(logBufferSize)
+	logResults := make(chan *LogMetric, len(m.id)*2)
+
+	// Get a list of custom metrics from logs
+	for _, id := range m.id {
+		go m.getLogsCount(dockerClient, id, true, false, m.lastLogScrape, &wg, logResults)
+		go m.getLogsCount(dockerClient, id, false, true, m.lastLogScrape, &wg, logResults)
+	}
+
+	wg.Wait()
+	close(logResults)
+
+	// Get metrics from logs
+	for lr := range logResults {
+		// Initialize the LogMetrics structure if it doesn't exist
+		if m.logMetrics[lr.id] == nil {
+			m.logMetrics[lr.id] = &LogMetrics{}
+		}
+		if lr.stdout {
+			m.logMetrics[lr.id].stdout += lr.value
+		} else if lr.stderr {
+			m.logMetrics[lr.id].stderr += lr.value
+		}
+	}
+
+	logger.Info("Collecting log metrics",
+		"source", "background worker",
+		"containers", len(m.id),
+	)
+
+	// Update new scrape date
+	m.lastLogScrape = time.Now()
 }
 
 // Get metrics from inspect method
@@ -386,7 +440,7 @@ func (m *Metrics) updateVolumesMetrics(dockerClient *client.Client, logger *slog
 	}
 	m.volumeMetrics = volumeMetrics
 	volumeCount := len(m.volumeMetrics)
-	logger.Info("collecting metrics",
+	logger.Info("collecting volume metrics",
 		"source", "background worker",
 		"volumes", strconv.Itoa(volumeCount),
 	)
@@ -608,7 +662,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stdout_count",
 				"Number of logs from stdout stream per scrape interval",
-				"gauge",
+				"counter",
 				id,
 				containerName,
 				composeProject,
@@ -621,7 +675,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stderr_count",
 				"Number of logs from stderr stream per scrape interval",
-				"gauge",
+				"counter",
 				id,
 				containerName,
 				composeProject,
@@ -629,19 +683,6 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 				composeWorkDir,
 				hostname,
 				m.logMetrics[id].stderr,
-			)...)
-
-			data = append(data, m.prometheusFormat(
-				"docker_logs_all_count",
-				"Number of logs from all stream per scrape interval",
-				"gauge",
-				id,
-				containerName,
-				composeProject,
-				composeService,
-				composeWorkDir,
-				hostname,
-				m.logMetrics[id].stdall,
 			)...)
 		}
 	}
@@ -695,44 +736,6 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 		if r != nil {
 			m.baseMetrics[r.id] = r
 		}
-	}
-
-	// Get log metrics
-	if m.getLogMetrics {
-		// Create x2 groups for logs (stdout and stderr)
-		wg.Add(len(m.id) * 2)
-		logResults := make(chan *LogMetric, len(m.id)*2)
-
-		// Get a list of custom metrics from logs
-		for _, id := range m.id {
-			go m.getLogsCount(dockerClient, id, true, false, m.lastLogScrape, &wg, logResults)
-			go m.getLogsCount(dockerClient, id, false, true, m.lastLogScrape, &wg, logResults)
-		}
-
-		wg.Wait()
-		close(logResults)
-
-		// Get metrics from logs
-		m.logMetrics = map[string]*LogMetrics{}
-		for lr := range logResults {
-			// Initialize the LogMetrics structure if it doesn't exist
-			if m.logMetrics[lr.id] == nil {
-				m.logMetrics[lr.id] = &LogMetrics{}
-			}
-			if lr.stdout {
-				m.logMetrics[lr.id].stdout = lr.value
-			} else if lr.stderr {
-				m.logMetrics[lr.id].stderr = lr.value
-			}
-		}
-
-		// Filling the sum of the streams
-		for _, id := range m.id {
-			m.logMetrics[id].stdall = m.logMetrics[id].stdout + m.logMetrics[id].stderr
-		}
-
-		// Update new scrape date
-		m.lastLogScrape = time.Now()
 	}
 
 	// Get start time containers from inspect
@@ -847,25 +850,6 @@ func main() {
 	var metrics *Metrics = &Metrics{}
 	var err error
 
-	// Get environment variables
-	metrics.getLogMetrics = true
-	getLogMetrics := os.Getenv("DOCKER_METRICS_LOG")
-	if strings.ToLower(getLogMetrics) == "false" {
-		metrics.getLogMetrics = false
-	}
-	if metrics.getLogMetrics {
-		metrics.lastLogScrape = time.Now()
-	}
-
-	metrics.cacheTTL = 15 * time.Second
-	envCache := os.Getenv("DOCKER_METRICS_CACHE")
-	if envCache != "" {
-		parsed, err := strconv.Atoi(envCache)
-		if err == nil && parsed > 0 {
-			metrics.cacheTTL = time.Duration(parsed) * time.Second
-		}
-	}
-
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -877,9 +861,52 @@ func main() {
 	// hostname, _ := os.Hostname()
 	hostname := metrics.getHostname(dockerClient)
 
+	// Get environment variables
+	metrics.cacheTTL = 15 * time.Second
+	envCache := os.Getenv("DOCKER_METRICS_CACHE")
+	if envCache != "" {
+		parsed, err := strconv.Atoi(envCache)
+		if err == nil && parsed > 0 {
+			metrics.cacheTTL = time.Duration(parsed) * time.Second
+		}
+	}
+
+	// Custom logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	// Background worker for volume metrics
+	// #10 Background worker for get metrics from logs
+	metrics.getLogMetrics = true
+	getLogMetrics := os.Getenv("DOCKER_METRICS_LOG")
+	if strings.ToLower(getLogMetrics) == "false" {
+		metrics.getLogMetrics = false
+	}
+	if metrics.getLogMetrics {
+		// Init log map for accumulate logs
+		metrics.logMetrics = map[string]*LogMetrics{}
+		// We do NOT record the date on the first run to collect all logs without filtering.
+		// metrics.lastLogScrape = time.Now()
+		// We collect a list of identifiers of all containers before starting log collection.
+		metrics.info, metrics.id = metrics.getContainers(dockerClient, true)
+		// Default cache value
+		metrics.logCache = 15 * time.Second
+		envCache := os.Getenv("DOCKER_METRICS_LOG_CACHE")
+		if envCache != "" {
+			parsed, err := strconv.Atoi(envCache)
+			if err == nil && parsed > 0 {
+				metrics.logCache = time.Duration(parsed) * time.Second
+			}
+		}
+		go func() {
+			metrics.updateLogsMetrics(dockerClient, logger)
+			ticker := time.NewTicker(metrics.logCache)
+			defer ticker.Stop()
+			for range ticker.C {
+				metrics.updateLogsMetrics(dockerClient, logger)
+			}
+		}()
+	}
+
+	// #12 Background worker for get metrics from volumes
 	metrics.getVolumeMetrics = true
 	getVolumeMetrics := os.Getenv("DOCKER_METRICS_VOLUME")
 	if strings.ToLower(getVolumeMetrics) == "false" {
