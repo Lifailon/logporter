@@ -41,6 +41,14 @@ jobs:
       - name: Run opencode in auto mode
         run: opencode run "${{ github.event.inputs.Prompt }}" --auto
 
+      - name: Git diff to summary
+        run: |
+          echo "## Git diff" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`diff" >> $GITHUB_STEP_SUMMARY
+          git diff >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
       - name: Create PR
         if: ${{ github.event.inputs.PR == 'true' }}
         uses: peter-evans/create-pull-request@v8
