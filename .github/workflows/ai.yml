@@ -20,12 +20,15 @@ on:
         description: "Create PR"
         default: false
         type: boolean
+      Branch:
+        description: "Branch for making changes to specified or new PR"
+        required: true
+        default: "fix/1.1.1"
 
 permissions:
   models: read
   contents: write
   pull-requests: write
-
 
 jobs:
   opencode-review:
@@ -54,8 +57,10 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: "${{ github.run_number }} opencode review"
-          branch: "fix/${{ github.run_number }}"
+          author: "opencode[bot] <opencode[bot]@users.noreply.github.com>"
+          committer: "opencode[bot] <opencode[bot]@users.noreply.github.com>"
+          commit-message: "opencode review for build ${{ github.run_number }}"
+          branch: ${{ github.event.inputs.Branch }}
           title: "[AI] Code review"
           body: "Changes in code from OpenCode by prompt: ${{ github.event.inputs.Prompt }}"
           add-paths: .
