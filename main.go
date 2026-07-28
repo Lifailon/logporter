@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -283,27 +284,30 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	defer logs.Close()
 
 	// Read and parsing json
-	dataLogs, err := io.ReadAll(logs)
-	if err != nil {
-		log.Printf("Failed to read container logs: %v", err)
-		return
-	}
-
-	// Convert bytes to text and get array from rows
-	lines := strings.Split(string(dataLogs), "\n")
-	// Get line count
-	countLogs := len(lines) - 1
-
-	// scanner := bufio.NewScanner(logs)
-	// countLogs := 0
-	// for scanner.Scan() {
-	// 	countLogs++
-	// }
-	// err = scanner.Err()
+	// dataLogs, err := io.ReadAll(logs)
 	// if err != nil {
 	// 	log.Printf("Failed to read container logs: %v", err)
 	// 	return
 	// }
+	// Convert bytes to text and get array from rows
+	// lines := strings.Split(string(dataLogs), "\n")
+	// Get line count
+	// countLogs := len(lines) - 1
+	// Counting the number of line breaks in bytes
+	// countLogs := bytes.Count(dataLogs, []byte{'\n'})
+
+	scanner := bufio.NewScanner(logs)
+	// Maximum buffer size is 1 MB for one line.
+	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
+	countLogs := 0
+	for scanner.Scan() {
+		countLogs++
+	}
+	err = scanner.Err()
+	if err != nil {
+		log.Printf("Failed to read container logs: %v", err)
+		return
+	}
 
 	logMetric := LogMetric{
 		id:     id,
@@ -316,6 +320,8 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 }
 
 func (m *Metrics) updateLogsMetrics(dockerClient *client.Client, logger *slog.Logger) {
+	start := time.Now()
+
 	var wg sync.WaitGroup
 
 	// Create x2 groups for logs (stdout and stderr streams)
@@ -348,6 +354,7 @@ func (m *Metrics) updateLogsMetrics(dockerClient *client.Client, logger *slog.Lo
 	logger.Info("Collecting log metrics",
 		"source", "background worker",
 		"containers", len(m.id),
+		"duration", time.Since(start).Round(time.Millisecond),
 	)
 
 	// Update new scrape date
@@ -434,6 +441,7 @@ func (m *Metrics) getVolumesMetrics(dockerClient *client.Client) ([]volumeMetric
 }
 
 func (m *Metrics) updateVolumesMetrics(dockerClient *client.Client, logger *slog.Logger) {
+	start := time.Now()
 	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
 	if err != nil {
 		fmt.Println(err)
@@ -443,6 +451,7 @@ func (m *Metrics) updateVolumesMetrics(dockerClient *client.Client, logger *slog
 	logger.Info("collecting volume metrics",
 		"source", "background worker",
 		"volumes", strconv.Itoa(volumeCount),
+		"duration", time.Since(start).Round(time.Millisecond),
 	)
 }
 
@@ -829,9 +838,9 @@ func (m *Metrics) loggingMiddleware(next http.Handler, logger *slog.Logger) http
 		containersCount := len(m.id)
 		logger.Info("response sent",
 			"source", r.RemoteAddr,
-			"duration", time.Since(start).Round(time.Millisecond),
 			"cache", m.cacheValid,
 			"containers", containersCount,
+			"duration", time.Since(start).Round(time.Millisecond),
 		)
 	})
 }
