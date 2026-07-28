@@ -75,11 +75,19 @@ services:
 
 Use environment variables to configure the exporter:
 
-| Label                       | Type      | Default                        | Description                                                                                           |
-| --------------------------- | --------- | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| `DOCKER_LOG_METRICS`        | `boolean` | `true`                         | Getting the number of messages in logs from all streams.                                              |
-| `DOCKER_CACHE_METRICS`      | `boolean` | `15`                           | Caching time for all collected metrics.                                                               |
-| `DOCKER_HOST`               | `string`  | `""`                           | Optional: Use a docker proxy instead of the docker socket mount for additional security.              |
+| Label                         | Type      | Default | Description                                                                               |
+| -                             | -         | -       | -                                                                                         |
+| `DOCKER_METRICS_PORT`         | `int`     | `9333`  | The port on which the exporter is listening.                                              |
+| `DOCKER_METRICS_HOSTNAME`     | `string`  | `""`    | A custom hostname that appears in metric tags.                                            |
+| `DOCKER_METRICS_CACHE`        | `int`     | `15`    | Cache time for all collected metrics in seconds.                                          |
+| `DOCKER_METRICS_LOG`          | `boolean` | `true`  | Collecting the number of messages in logs from all threads.                               |
+| `DOCKER_METRICS_LOG_CACHE`    | `int`     | `15`    | Cache time for collected logs metrics in seconds.                                         |
+| `DOCKER_METRICS_VOLUME`       | `boolean` | `true`  | Collecting a list of all volumes and their sizes.                                         |
+| `DOCKER_METRICS_VOLUME_CACHE` | `int`     | `15`    | Cache time for collected volumes metrics in minutes.                                      |
+| `DOCKER_HOST`                 | `string`  | `""`    | Optional: use a docker proxy instead of the docker socket mount for additional security.  |
+
+> [!WARNING]
+> Using custom metrics may result in a slight increase in resource consumption (depending on the volume of logs in containers and volumes). The metrics themselves are transmitted instantly thanks to data collection by background workers and caching. Check the duration value in the exporter logs to ensure that it does not exceed the scrape interval.
 
 - Connect the new target to the Prometheus configuration file:
 
@@ -99,7 +107,7 @@ scrape_configs:
 
 ![](/img/metrics-2.jpg)
 
-- Set up alerts via [Alertmanager](https://github.com/prometheus/alertmanager), for example to receive notifications about high CPU load and reboot containers:
+- Configure rules in [Alertmanager](https://github.com/prometheus/alertmanager), e.g., to receive notifications about high CPU usage and reboot containers:
 
 ```yml
 groups:

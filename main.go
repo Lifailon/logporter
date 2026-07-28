@@ -848,10 +848,14 @@ func (m *Metrics) loggingMiddleware(next http.Handler, logger *slog.Logger) http
 // Get hostname from Docker Info method
 func (m *Metrics) getHostname(dockerClient *client.Client) string {
 	info, err := dockerClient.Info(context.Background())
-	if err != nil {
-		log.Printf("Failed to get hostname: %v", err)
+	if err == nil {
+		return info.Name
 	}
-	return info.Name
+	hostname, err := os.Hostname()
+	if err == nil {
+		return hostname
+	}
+	return "nil"
 }
 
 func main() {
@@ -866,11 +870,26 @@ func main() {
 	}
 	defer dockerClient.Close()
 
-	// Get hostname
-	// hostname, _ := os.Hostname()
-	hostname := metrics.getHostname(dockerClient)
+	var hostname string
+	var port string
 
 	// Get environment variables
+	port = "9333"
+	envPort := os.Getenv("DOCKER_METRICS_PORT")
+	if envPort != "" {
+		parsed, err := strconv.Atoi(envPort)
+		if err == nil && parsed > 0 && parsed < 65536 {
+			port = envPort
+		}
+	}
+
+	envHostname := os.Getenv("DOCKER_METRICS_HOSTNAME")
+	if envHostname == "" {
+		hostname = metrics.getHostname(dockerClient)
+	} else {
+		hostname = envHostname
+	}
+
 	metrics.cacheTTL = 15 * time.Second
 	envCache := os.Getenv("DOCKER_METRICS_CACHE")
 	if envCache != "" {
@@ -922,7 +941,7 @@ func main() {
 		metrics.getVolumeMetrics = false
 	}
 	if metrics.getVolumeMetrics {
-		metrics.volumeCache = 1 * time.Minute
+		metrics.volumeCache = 15 * time.Minute
 		envCache := os.Getenv("DOCKER_METRICS_VOLUME_CACHE")
 		if envCache != "" {
 			parsed, err := strconv.Atoi(envCache)
@@ -974,7 +993,6 @@ func main() {
 	logSrv := metrics.loggingMiddleware(httpServerMux, logger)
 
 	// Start HTTP server
-	port := "9333"
 	fmt.Println("Exporter started on " + port + " port")
 	err = http.ListenAndServe(":"+port, logSrv)
 	if err != nil {
