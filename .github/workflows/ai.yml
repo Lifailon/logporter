@@ -1,22 +1,73 @@
-name: AI generate list of metrics
+name: AI
 
 on:
   workflow_dispatch:
     inputs:
+      Review:
+        description: "Code review"
+        default: true
+        type: boolean
+      Prompt:
+        description: "Prompt for code review"
+        required: true
+        # default: "Внимательно проанализируй код и текущие тесты, напиши новые тесты, проверь их работу и процент покрытия до и после"
+        default: "Внимательно проанализируй код, проверь на наличие ошибок, исправь их и проверь работоспособность"
+      Docs:
+        description: "Generate list of metrics"
+        default: false
+        type: boolean
       PR:
         description: "Create PR"
         default: false
         type: boolean
+      Branch:
+        description: "Branch for making changes to specified or new PR"
+        required: true
+        default: "fix/1.1.1"
+
+permissions:
+  models: read
+  contents: write
+  pull-requests: write
 
 jobs:
-  build:
+  opencode-review:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.Review == 'true' }}
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v7
+
+      - name: Install opencode
+        run: curl -fsSL https://opencode.ai/install | bash
+
+      - name: Run opencode in auto mode
+        run: opencode run "${{ github.event.inputs.Prompt }}" --auto
+
+      - name: Git diff to summary
+        run: |
+          echo "## Git diff" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`diff" >> $GITHUB_STEP_SUMMARY
+          git diff >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create PR
+        if: ${{ github.event.inputs.PR == 'true' }}
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          author: "opencode[bot] <opencode[bot]@users.noreply.github.com>"
+          committer: "opencode[bot] <opencode[bot]@users.noreply.github.com>"
+          commit-message: "opencode review for build ${{ github.run_number }}"
+          branch: ${{ github.event.inputs.Branch }}
+          title: "[AI] Code review"
+          body: "Changes in code from OpenCode by prompt: ${{ github.event.inputs.Prompt }}"
+          add-paths: .
+        
+  ai-inference:
     runs-on: ubuntu-latest 
-
-    permissions:
-      models: read
-      contents: write
-      pull-requests: write
-
+    if: ${{ github.event.inputs.Docs == 'true' }}
     steps:
       - name: Clone repository
         uses: actions/checkout@v7
@@ -57,7 +108,6 @@ jobs:
             The table must consist of three columns: Name, Data type, and Help description.
           prompt: ${{ steps.metrics_step.outputs.METRICS }}
             
-
       - name: Update README file
         env:
           AI_RESPONSE: ${{ steps.ai_query.outputs.response }}
@@ -74,7 +124,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "update list of metrics"
           branch: "docs/metrics-list"
-          title: "Update list of metrics."
+          title: "[AI] Update list of metrics"
           body: "The list of metrics is generated automatically using AI based on the data requested from the exporter."
           add-paths: |
             README.md
