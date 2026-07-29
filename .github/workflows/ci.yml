@@ -11,6 +11,10 @@ on:
         description: "Publish image to Docker Hub"
         default: false
         type: boolean
+      Tag:
+        description: "Additional tag for image"
+        required: false
+        default: "latest"
 
 jobs:
   build:
@@ -80,3 +84,7 @@ jobs:
             --platform linux/amd64,linux/arm64 \
             -t lifailon/logporter:latest \
             --push .
+          TAG="${{ github.event.inputs.Tag }}"
+          if [ ! -z "$TAG" ]; then
+            docker buildx imagetools tag lifailon/logporter:latest lifailon/logporter:$TAG
+          fi

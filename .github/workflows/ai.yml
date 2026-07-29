@@ -21,7 +21,7 @@ on:
         default: false
         type: boolean
       Branch:
-        description: "Branch for making changes to specified or new PR"
+        description: "Branch for current or new PR"
         required: true
         default: "fix/1.1.1"
 

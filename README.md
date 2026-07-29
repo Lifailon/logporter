@@ -132,23 +132,24 @@ groups:
 ```
 
 ## List of metrics
-| Name                              | Data type | Help description                                                                                      |
-|------------------------------------|-----------|------------------------------------------------------------------------------------------------------|
-| docker_image_size                  | gauge     | The size of the image minus the layer shared by other images                                         |
-| docker_volume_size                 | gauge     | The size of the volumes and the number of containers associated with it in the volumeUsage tag       |
-| docker_container_status            | gauge     | Container status: running (1) or stopped (0)                                                        |
-| docker_cpu_usage_total             | counter   | Total CPU usage (user and kernel) in seconds                                                        |
-| docker_cpu_usage_user              | counter   | User CPU usage in seconds                                                                           |
-| docker_cpu_usage_kernel            | counter   | Kernel CPU usage in seconds                                                                         |
-| docker_memory_total                | gauge     | Total memory size in bytes                                                                          |
-| docker_memory_usage                | gauge     | Usage memory size in bytes                                                                          |
-| docker_network_received_bytes      | counter   | Number of bytes received on the network                                                             |
-| docker_network_received_packages   | counter   | Number of packages received on the network                                                          |
-| docker_network_transmit_bytes      | counter   | Number of bytes transmitted on the network                                                          |
-| docker_network_transmit_packages   | counter   | Number of packages transmitted on the network                                                       |
-| docker_io_read_bytes               | counter   | Number of bytes read by the block device                                                            |
-| docker_io_write_bytes              | counter   | Number of bytes write by the block device                                                           |
-| docker_process_pids_count          | gauge     | Number of running processes and threads                                                             |
-| docker_logs_stdout_count           | counter   | Number of logs from stdout stream per scrape interval                                               |
-| docker_logs_stderr_count           | counter   | Number of logs from stderr stream per scrape interval                                               |
-| docker_started_time                | gauge     | Container started time                                                                              |
+
+| Name                               | Data type   | Help description                                                                                    |
+| -                                  | -           | -                                                                                                   |
+| docker_image_size                  | `gauge`     | The size of the image minus the layer shared by other images                                        |
+| docker_volume_size                 | `gauge`     | The size of the volumes and the number of containers associated with it in the volumeUsage tag      |
+| docker_container_status            | `gauge`     | Container status: running (1) or stopped (0)                                                        |
+| docker_cpu_usage_total             | `counter`   | Total CPU usage (user and kernel) in seconds                                                        |
+| docker_cpu_usage_user              | `counter`   | User CPU usage in seconds                                                                           |
+| docker_cpu_usage_kernel            | `counter`   | Kernel CPU usage in seconds                                                                         |
+| docker_memory_total                | `gauge`     | Total memory size in bytes                                                                          |
+| docker_memory_usage                | `gauge`     | Usage memory size in bytes                                                                          |
+| docker_network_received_bytes      | `counter`   | Number of bytes received on the network                                                             |
+| docker_network_received_packages   | `counter`   | Number of packages received on the network                                                          |
+| docker_network_transmit_bytes      | `counter`   | Number of bytes transmitted on the network                                                          |
+| docker_network_transmit_packages   | `counter`   | Number of packages transmitted on the network                                                       |
+| docker_io_read_bytes               | `counter`   | Number of bytes read by the block device                                                            |
+| docker_io_write_bytes              | `counter`   | Number of bytes write by the block device                                                           |
+| docker_process_pids_count          | `gauge`     | Number of running processes and threads                                                             |
+| docker_logs_stdout_count           | `counter`   | Number of logs from stdout stream per scrape interval                                               |
+| docker_logs_stderr_count           | `counter`   | Number of logs from stderr stream per scrape interval                                               |
+| docker_started_time                | `gauge`     | Container started time                                                                              |
