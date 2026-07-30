@@ -1,7 +1,7 @@
 # logporter
 
-![Docker Hub Pulls](https://img.shields.io/docker/pulls/lifailon/logporter?label=Docker+Hub+Pulls&logo=docker) \
-![Docker Image Size](https://img.shields.io/docker/image-size/lifailon/logporter?label=Docker+Image+Size&logo=docker)
+[![Docker Hub Pulls](https://img.shields.io/docker/pulls/lifailon/logporter?label=Docker+Hub+Pulls&logo=docker)](https://hub.docker.com/r/lifailon/logporter) \
+[![Docker Image Size](https://img.shields.io/docker/image-size/lifailon/logporter?label=Docker+Image+Size&logo=docker)](https://hub.docker.com/r/lifailon/logporter/tags)
 
 A simple and lightweight alternative to [cAdvisor](https://github.com/google/cadvisor) for extracting basic and custom metrics from Docker containers.
 
@@ -18,7 +18,7 @@ Comparative measurement of CPU and memory usage from `cAdvisor` and `logporter` 
 
 ## Quick start
 
-Clone the repository and launch a pre-configured monitoring stack including Prometheus and Grafana with a single command
+Clone the repository and run the pre-configured monitoring stack with a single command:
 
 ```bash
 git clone https://github.com/Lifailon/logporter
@@ -26,7 +26,7 @@ cd logporter
 docker-compose up -d
 ```
 
-The exporter is pre-connected to Prometheus, and a Prometheus data source is added to Grafana and a dashboard is connected.
+The dashboard and Prometheus data source with the added exporter are already connected to Grafana.
 
 Go to Grafana UI: `http://localhost:3000` and enter `admin`:`admin`.
 
@@ -65,8 +65,6 @@ services:
     image: lscr.io/linuxserver/socket-proxy:latest
     container_name: docker-proxy
     restart: always
-    expose:
-      - 2375
     environment:
       - CONTAINERS=1
     volumes:
@@ -106,30 +104,6 @@ scrape_configs:
 ![](/img/metrics-1.jpg)
 
 ![](/img/metrics-2.jpg)
-
-- Configure rules in [Alertmanager](https://github.com/prometheus/alertmanager), e.g., to receive notifications about high CPU usage and reboot containers:
-
-```yml
-groups:
-- name: processor
-  rules:
-  - alert: CONTAINER_CPU_WARN
-    expr: avg(rate(docker_cpu_usage_total[1m])) by (containerName) * 100 > 50
-    for: 1m
-    labels:
-      severity: warning
-    annotations:
-      description: "CPU load above 50% on container {{ $labels.containerName }}"
-
-- name: reboot
-  rules:
-  - alert: CONTAINER_UPTIME_ERR
-    expr: avg(changes(docker_started_time[1m])) by (containerName,hostname) > 0
-    labels:
-      severity: error
-    annotations:
-      description: "Reboot container {{ $labels.containerName }} on {{ $labels.hostname }}"
-```
 
 ## List of metrics
 
