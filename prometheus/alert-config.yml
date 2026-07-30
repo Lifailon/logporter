@@ -1,0 +1,16 @@
+# templates:
+#   - '/etc/alertmanager/*.tmpl'
+
+receivers:
+ - name: telegram-test
+   telegram_configs:
+    - chat_id: <CHAT/CHANNEL_ID>
+      bot_token: <BOT_API_KEY>
+      api_url: "https://api.telegram.org"
+      parse_mode: HTML
+      message: '{{ template "telegram.default.message" . }}'
+      # Custom telegram.tmpl
+      # message: '{{ template "telegram.default" . }}'
+
+route:
+  receiver: telegram-test

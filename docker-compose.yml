@@ -3,8 +3,8 @@ services:
     image: lifailon/logporter:latest
     container_name: logporter
     restart: always
-    ports:
-      - 9333:9333
+    # ports:
+    #   - 9333:9333
     environment:
       - DOCKER_METRICS_PORT=9333
       - DOCKER_METRICS_HOSTNAME=
@@ -24,8 +24,6 @@ services:
   #   image: lscr.io/linuxserver/socket-proxy:latest
   #   container_name: docker-proxy
   #   restart: always
-  #   expose:
-  #     - 2375
   #   environment:
   #     - CONTAINERS=1
   #   volumes:
@@ -35,12 +33,12 @@ services:
     image: prom/prometheus:latest
     container_name: prometheus
     restart: always
-    ports:
-      - 9090:9090
+    # ports:
+    #   - 9090:9090
     volumes:
       - prometheus_data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/alert.yml:/etc/prometheus/alert.yml
+      - ./prometheus/alert-rules.yml:/etc/prometheus/alert.yml
 
   grafana:
     image: grafana/grafana:latest
@@ -56,6 +54,18 @@ services:
       - ./grafana:/var/lib/grafana/dashboards
       - ./grafana/provider.yaml:/etc/grafana/provisioning/dashboards/provider.yaml
       - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+
+  alertmanager:
+    image: prom/alertmanager
+    container_name: alertmanager
+    restart: always
+    # ports:
+    #   - 9093:9093
+    # environment:
+    #   - HTTPS_PROXY=http://192.168.3.100:10808
+    #   - NO_PROXY=localhost,127.0.0.1,192.168.3.0/24
+    volumes:
+      - ./prometheus/alert-config.yml:/etc/alertmanager/config.yml
 
 volumes:
   prometheus_data:
