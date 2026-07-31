@@ -85,7 +85,7 @@ Use environment variables to configure the exporter:
 | `DOCKER_HOST`                 | `string`  | `""`    | Optional: use a docker proxy instead of the docker socket mount for additional security.  |
 
 > [!WARNING]
-> Using custom metrics may result in a slight increase in resource consumption (depending on the volume of logs in containers and volumes). The metrics themselves are transmitted instantly thanks to data collection by background workers and caching. Check the duration value in the exporter logs to ensure that it does not exceed the scrape interval.
+> Using custom metrics may increase resource consumption (depending on the number of containers and the logs they contain). The metrics themselves are transmitted instantly thanks to data collection by background workers and caching. Check the duration value in the exporter logs to ensure that it does not exceed the scrape interval.
 
 - Connect the new target to the Prometheus configuration file:
 
