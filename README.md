@@ -78,10 +78,10 @@ Use environment variables to configure the exporter:
 | `DOCKER_METRICS_PORT`         | `int`     | `9333`  | The port on which the exporter is listening.                                              |
 | `DOCKER_METRICS_HOSTNAME`     | `string`  | `""`    | A custom hostname that appears in metric tags.                                            |
 | `DOCKER_METRICS_CACHE`        | `int`     | `15`    | Cache time for all collected metrics in seconds.                                          |
-| `DOCKER_METRICS_LOG`          | `boolean` | `true`  | Collecting the number of messages in logs from all threads.                               |
+| `DOCKER_METRICS_LOG`          | `boolean` | `false` | Collecting the number of messages in logs from all streams.                               |
 | `DOCKER_METRICS_LOG_CACHE`    | `int`     | `15`    | Cache time for collected logs metrics in seconds.                                         |
 | `DOCKER_METRICS_VOLUME`       | `boolean` | `true`  | Collecting a list of all volumes and their sizes.                                         |
-| `DOCKER_METRICS_VOLUME_CACHE` | `int`     | `15`    | Cache time for collected volumes metrics in minutes.                                      |
+| `DOCKER_METRICS_VOLUME_CACHE` | `int`     | `30`    | Cache time for collected volumes metrics in minutes.                                      |
 | `DOCKER_HOST`                 | `string`  | `""`    | Optional: use a docker proxy instead of the docker socket mount for additional security.  |
 
 > [!WARNING]
@@ -124,6 +124,6 @@ scrape_configs:
 | docker_io_read_bytes               | `counter`   | Number of bytes read by the block device                                                            |
 | docker_io_write_bytes              | `counter`   | Number of bytes write by the block device                                                           |
 | docker_process_pids_count          | `gauge`     | Number of running processes and threads                                                             |
-| docker_logs_stdout_count           | `counter`   | Number of logs from stdout stream per scrape interval                                               |
-| docker_logs_stderr_count           | `counter`   | Number of logs from stderr stream per scrape interval                                               |
+| docker_logs_stdout_count           | `counter`   | Number of messages in logs from standard output                                                     |
+| docker_logs_stderr_count           | `counter`   | Number of messages in logs from error output                                                        |
 | docker_started_time                | `gauge`     | Container started time                                                                              |

@@ -9,10 +9,10 @@ services:
       - DOCKER_METRICS_PORT=9333
       - DOCKER_METRICS_HOSTNAME=
       - DOCKER_METRICS_CACHE=15 # 15s
-      - DOCKER_METRICS_LOG=true
+      - DOCKER_METRICS_LOG=false
       - DOCKER_METRICS_LOG_CACHE= 15 # 15s
       - DOCKER_METRICS_VOLUME=true
-      - DOCKER_METRICS_VOLUME_CACHE=15 # 15m
+      - DOCKER_METRICS_VOLUME_CACHE=30 # 30m
       # Optional: Use a docker proxy instead of the docker socket mount for improved security.
       # - DOCKER_HOST=tcp://docker-proxy:2375
     volumes:

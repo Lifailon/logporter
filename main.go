@@ -670,7 +670,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 		if m.logMetrics[id] != nil {
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stdout_count",
-				"Number of logs from stdout stream per scrape interval",
+				"Number of messages in logs from standard output",
 				"counter",
 				id,
 				containerName,
@@ -683,7 +683,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 
 			data = append(data, m.prometheusFormat(
 				"docker_logs_stderr_count",
-				"Number of logs from stderr stream per scrape interval",
+				"Number of messages in logs from error output",
 				"counter",
 				id,
 				containerName,
@@ -903,10 +903,10 @@ func main() {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// #10 Background worker for get metrics from logs
-	metrics.getLogMetrics = true
+	metrics.getLogMetrics = false
 	getLogMetrics := os.Getenv("DOCKER_METRICS_LOG")
-	if strings.ToLower(getLogMetrics) == "false" {
-		metrics.getLogMetrics = false
+	if strings.ToLower(getLogMetrics) == "true" {
+		metrics.getLogMetrics = true
 	}
 	if metrics.getLogMetrics {
 		// Init log map for accumulate logs
@@ -941,7 +941,7 @@ func main() {
 		metrics.getVolumeMetrics = false
 	}
 	if metrics.getVolumeMetrics {
-		metrics.volumeCache = 15 * time.Minute
+		metrics.volumeCache = 30 * time.Minute
 		envCache := os.Getenv("DOCKER_METRICS_VOLUME_CACHE")
 		if envCache != "" {
 			parsed, err := strconv.Atoi(envCache)
