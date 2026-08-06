@@ -1,6 +1,7 @@
 services:
   logporter:
     image: lifailon/logporter:latest
+    build: .
     container_name: logporter
     restart: always
     ports:
@@ -10,15 +11,25 @@ services:
       - DOCKER_METRICS_HOSTNAME=
       - DOCKER_METRICS_CACHE=15 # 15s
       - DOCKER_METRICS_LOG=false
-      - DOCKER_METRICS_LOG_CACHE= 15 # 15s
+      - DOCKER_METRICS_LOG_CACHE=15 # 15s
       - DOCKER_METRICS_VOLUME=true
       - DOCKER_METRICS_VOLUME_CACHE=30 # 30m
-      # Optional: Use a docker proxy instead of the docker socket mount for improved security.
+      # Remove the LOKI_URL variable or leave it empty to disable collecting and sending logs to Loki
+      - LOKI_URL=http://loki:3100
+      # Optional: basic auth and tenant
+      # - LOKI_USERNAME=
+      # - LOKI_PASSWORD=
+      # - LOKI_TENANT_ID=
+      - LOKI_PUSH_SECONDS=5
+      - LOKI_PUSH_LINES=1000
+      - LOKI_BUFFER_LINES=10000
+      - LOKI_SINCE=0
+      # Optional: use a docker proxy instead of the docker socket mount for improved security
       # - DOCKER_HOST=tcp://docker-proxy:2375
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
-  # Optional: A docker proxy service is only needed if DOCKER_HOST is set.
+  # Optional: a docker proxy service is only needed if DOCKER_HOST is set.
   # It improves security by filtering api calls and disallowing write operations.
   # docker-proxy:
   #   image: lscr.io/linuxserver/socket-proxy:latest
@@ -31,17 +42,6 @@ services:
   #   volumes:
   #     - /var/run/docker.sock:/var/run/docker.sock:ro
 
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: prometheus
-    restart: always
-    ports:
-      - 9090:9090
-    volumes:
-      - prometheus_data:/prometheus
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/alert.yml:/etc/prometheus/alert.yml
-
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -53,10 +53,31 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./grafana:/var/lib/grafana/dashboards
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
       - ./grafana/provider.yaml:/etc/grafana/provisioning/dashboards/provider.yaml
       - ./grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
 
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: always
+    ports:
+      - 9090:9090
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alert.yml:/etc/prometheus/alert.yml
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: always
+    ports:
+      - 3100:3100
+    volumes:
+      - loki_data:/loki
+
 volumes:
-  prometheus_data:
   grafana_data:
+  prometheus_data:
+  loki_data:

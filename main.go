@@ -19,6 +19,8 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+
+	"logporter/internal/loki"
 )
 
 type Metrics struct {
@@ -100,7 +102,7 @@ type volumeMetric struct {
 func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[string]*Info, []string) {
 	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: All})
 	if err != nil {
-		log.Printf("Failed to get container list: %v", err)
+		log.Printf("failed to get container list: %v", err)
 		return nil, nil
 	}
 	info := map[string]*Info{}
@@ -111,6 +113,7 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 		i.name = strings.Replace(container.Names[0], "/", "", 1)
 		i.state = container.State
 		i.status = container.Status
+
 		// #8 Add compose labels
 		i.composeProject = container.Labels["com.docker.compose.project"]
 		i.composeService = container.Labels["com.docker.compose.service"]
@@ -131,7 +134,7 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMetrics {
 	stats, err := dockerClient.ContainerStatsOneShot(context.Background(), id)
 	if err != nil {
-		log.Printf("Failed to get container stats: %v", err)
+		log.Printf("failed to get container stats: %v", err)
 		return nil
 	}
 	defer stats.Body.Close()
@@ -278,7 +281,7 @@ func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bo
 	// Get log content
 	logs, err := dockerClient.ContainerLogs(context.Background(), id, logsOptions)
 	if err != nil {
-		log.Printf("Failed to get container logs: %v", err)
+		log.Printf("failed to get container logs: %v", err)
 		return
 	}
 	defer logs.Close()
@@ -444,7 +447,7 @@ func (m *Metrics) updateVolumesMetrics(dockerClient *client.Client, logger *slog
 	start := time.Now()
 	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error("failed to get volume list", "error:", err)
 	}
 	m.volumeMetrics = volumeMetrics
 	volumeCount := len(m.volumeMetrics)
@@ -716,7 +719,7 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 }
 
 // Main function for getting metrics
-func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []string {
+func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
 	// Get a list of containers with status information and all container ID array
 	m.info, m.id = m.getContainers(dockerClient, true)
 
@@ -770,7 +773,7 @@ func (m *Metrics) getMetrics(dockerClient *client.Client, hostname string) []str
 	var err error
 	m.imageMetrics, err = m.getImagesMetrics(dockerClient)
 	if err != nil {
-		fmt.Println(err)
+		logger.Error("failed to get image metrics", "error", err)
 	}
 
 	// Fill in the image metrics
@@ -959,6 +962,16 @@ func main() {
 		}()
 	}
 
+	lokiClient := loki.NewClient(logger)
+	if lokiClient != nil {
+		lokiClient.Start()
+		defer lokiClient.Stop()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go loki.Run(ctx, dockerClient, lokiClient, logger, hostname)
+		logger.Info("log collection and sending to Loki is enabled", "url", lokiClient.URL)
+	}
+
 	// Create HTTP server
 	httpServerMux := http.NewServeMux()
 
@@ -977,7 +990,7 @@ func main() {
 			metricsData = metrics.cacheData
 			metrics.cacheMutex.RUnlock()
 		} else {
-			metricsData = metrics.getMetrics(dockerClient, hostname)
+			metricsData = metrics.getMetrics(dockerClient, hostname, logger)
 			metrics.cacheMutex.Lock()
 			metrics.cacheData = metricsData
 			metrics.cacheTime = time.Now()
@@ -993,7 +1006,7 @@ func main() {
 	logSrv := metrics.loggingMiddleware(httpServerMux, logger)
 
 	// Start HTTP server
-	fmt.Println("Exporter started on " + port + " port")
+	logger.Info("exporter started", "port", port)
 	err = http.ListenAndServe(":"+port, logSrv)
 	if err != nil {
 		log.Fatalf("Failed to start HTTP server: %v", err)
