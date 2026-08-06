@@ -4,6 +4,12 @@ datasources:
   - name: prometheus
     type: prometheus    
     url: http://prometheus:9090
-    isDefault: true
-    editable: true
     access: proxy
+    editable: true
+    isDefault: true
+
+  - name: loki
+    type: loki
+    url: http://loki:3100
+    access: proxy
+    editable: true
