@@ -959,6 +959,16 @@ func main() {
 		}()
 	}
 
+	lokiClient := loki.NewClient(logger)
+	if lokiClient != nil {
+		lokiClient.Start()
+		defer lokiClient.Stop()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		go loki.Run(ctx, dockerClient, lokiClient, logger, hostname)
+		logger.Info("log collection and sending to Loki is enabled", "url", lokiClient.URL)
+	}
+
 	// Create HTTP server
 	httpServerMux := http.NewServeMux()
 
