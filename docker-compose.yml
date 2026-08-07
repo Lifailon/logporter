@@ -10,8 +10,6 @@ services:
       - DOCKER_METRICS_PORT=9333
       - DOCKER_METRICS_HOSTNAME=
       - DOCKER_METRICS_CACHE=15 # 15s
-      - DOCKER_METRICS_LOG=false
-      - DOCKER_METRICS_LOG_CACHE=15 # 15s
       - DOCKER_METRICS_VOLUME=true
       - DOCKER_METRICS_VOLUME_CACHE=30 # 30m
       # Remove the LOKI_URL variable or leave it empty to disable collecting and sending logs to Loki

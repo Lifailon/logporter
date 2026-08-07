@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -27,8 +26,6 @@ type Metrics struct {
 	id               []string
 	info             map[string]*Info
 	baseMetrics      map[string]*BaseMetrics
-	getLogMetrics    bool
-	logMetrics       map[string]*LogMetrics
 	inspectMetrics   map[string]float64
 	imageMetrics     []imageMetric
 	volumeMetrics    []volumeMetric
@@ -37,9 +34,7 @@ type Metrics struct {
 	cacheTTL         time.Duration
 	cacheMutex       sync.RWMutex
 	cacheValid       bool
-	lastLogScrape    time.Time
 	getVolumeMetrics bool
-	logCache         time.Duration
 	volumeCache      time.Duration
 }
 
@@ -67,18 +62,6 @@ type BaseMetrics struct {
 	ioReadBytes        int
 	ioWriteBytes       int
 	pids               int
-}
-
-type LogMetrics struct {
-	stdout int
-	stderr int
-}
-
-type LogMetric struct {
-	id     string
-	stdout bool
-	stderr bool
-	value  int
 }
 
 type InspectMetric struct {
@@ -261,107 +244,6 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	}
 
 	return &bm
-}
-
-// Get line count from logs for specified container by id
-func (m *Metrics) getLogsCount(dockerClient *client.Client, id string, stdout bool, stderr bool, since time.Time, wg *sync.WaitGroup, results chan *LogMetric) {
-	defer wg.Done()
-
-	// Fill in options to read container logs
-	logsOptions := container.LogsOptions{
-		ShowStdout: stdout,
-		ShowStderr: stderr,
-	}
-
-	// #10 Add the number of records for the scrape interval (since the last data collection)
-	if !since.IsZero() {
-		logsOptions.Since = fmt.Sprintf("%d", since.Unix())
-	}
-
-	// Get log content
-	logs, err := dockerClient.ContainerLogs(context.Background(), id, logsOptions)
-	if err != nil {
-		log.Printf("failed to get container logs: %v", err)
-		return
-	}
-	defer logs.Close()
-
-	// Read and parsing json
-	// dataLogs, err := io.ReadAll(logs)
-	// if err != nil {
-	// 	log.Printf("Failed to read container logs: %v", err)
-	// 	return
-	// }
-	// Convert bytes to text and get array from rows
-	// lines := strings.Split(string(dataLogs), "\n")
-	// Get line count
-	// countLogs := len(lines) - 1
-	// Counting the number of line breaks in bytes
-	// countLogs := bytes.Count(dataLogs, []byte{'\n'})
-
-	scanner := bufio.NewScanner(logs)
-	// Maximum buffer size is 1 MB for one line.
-	scanner.Buffer(make([]byte, 0, 1024*1024), 1024*1024)
-	countLogs := 0
-	for scanner.Scan() {
-		countLogs++
-	}
-	err = scanner.Err()
-	if err != nil {
-		log.Printf("Failed to read container logs: %v", err)
-		return
-	}
-
-	logMetric := LogMetric{
-		id:     id,
-		stdout: stdout,
-		stderr: stderr,
-		value:  countLogs,
-	}
-
-	results <- &logMetric
-}
-
-func (m *Metrics) updateLogsMetrics(dockerClient *client.Client, logger *slog.Logger) {
-	start := time.Now()
-
-	var wg sync.WaitGroup
-
-	// Create x2 groups for logs (stdout and stderr streams)
-	logBufferSize := len(m.id) * 2
-	wg.Add(logBufferSize)
-	logResults := make(chan *LogMetric, len(m.id)*2)
-
-	// Get a list of custom metrics from logs
-	for _, id := range m.id {
-		go m.getLogsCount(dockerClient, id, true, false, m.lastLogScrape, &wg, logResults)
-		go m.getLogsCount(dockerClient, id, false, true, m.lastLogScrape, &wg, logResults)
-	}
-
-	wg.Wait()
-	close(logResults)
-
-	// Get metrics from logs
-	for lr := range logResults {
-		// Initialize the LogMetrics structure if it doesn't exist
-		if m.logMetrics[lr.id] == nil {
-			m.logMetrics[lr.id] = &LogMetrics{}
-		}
-		if lr.stdout {
-			m.logMetrics[lr.id].stdout += lr.value
-		} else if lr.stderr {
-			m.logMetrics[lr.id].stderr += lr.value
-		}
-	}
-
-	logger.Info("Collecting log metrics",
-		"source", "background worker",
-		"containers", len(m.id),
-		"duration", time.Since(start).Round(time.Millisecond),
-	)
-
-	// Update new scrape date
-	m.lastLogScrape = time.Now()
 }
 
 // Get metrics from inspect method
@@ -668,37 +550,6 @@ func (m *Metrics) prometheusMetrics(id string, hostname string) []string {
 		m.baseMetrics[id].pids,
 	)...)
 
-	// Logs
-	if m.getLogMetrics {
-		if m.logMetrics[id] != nil {
-			data = append(data, m.prometheusFormat(
-				"docker_logs_stdout_count",
-				"Number of messages in logs from standard output",
-				"counter",
-				id,
-				containerName,
-				composeProject,
-				composeService,
-				composeWorkDir,
-				hostname,
-				m.logMetrics[id].stdout,
-			)...)
-
-			data = append(data, m.prometheusFormat(
-				"docker_logs_stderr_count",
-				"Number of messages in logs from error output",
-				"counter",
-				id,
-				containerName,
-				composeProject,
-				composeService,
-				composeWorkDir,
-				hostname,
-				m.logMetrics[id].stderr,
-			)...)
-		}
-	}
-
 	// Started time
 	data = append(data, m.prometheusFormat(
 		"docker_started_time",
@@ -904,38 +755,6 @@ func main() {
 
 	// Custom logger
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-
-	// #10 Background worker for get metrics from logs
-	metrics.getLogMetrics = false
-	getLogMetrics := os.Getenv("DOCKER_METRICS_LOG")
-	if strings.ToLower(getLogMetrics) == "true" {
-		metrics.getLogMetrics = true
-	}
-	if metrics.getLogMetrics {
-		// Init log map for accumulate logs
-		metrics.logMetrics = map[string]*LogMetrics{}
-		// We do NOT record the date on the first run to collect all logs without filtering.
-		// metrics.lastLogScrape = time.Now()
-		// We collect a list of identifiers of all containers before starting log collection.
-		metrics.info, metrics.id = metrics.getContainers(dockerClient, true)
-		// Default cache value
-		metrics.logCache = 15 * time.Second
-		envCache := os.Getenv("DOCKER_METRICS_LOG_CACHE")
-		if envCache != "" {
-			parsed, err := strconv.Atoi(envCache)
-			if err == nil && parsed > 0 {
-				metrics.logCache = time.Duration(parsed) * time.Second
-			}
-		}
-		go func() {
-			metrics.updateLogsMetrics(dockerClient, logger)
-			ticker := time.NewTicker(metrics.logCache)
-			defer ticker.Stop()
-			for range ticker.C {
-				metrics.updateLogsMetrics(dockerClient, logger)
-			}
-		}()
-	}
 
 	// #12 Background worker for get metrics from volumes
 	metrics.getVolumeMetrics = true
