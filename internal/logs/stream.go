@@ -1,4 +1,4 @@
-package loki
+package logs
 
 import (
 	"bytes"
@@ -162,7 +162,7 @@ func streamGetLogs(ctx context.Context, dockerClient *client.Client, loki *LokiC
 			continue
 		}
 
-		gotData, readErr := streamParseLogs(ctx, logs, stdoutKey, stdoutLabels, stderrKey, stderrLabels, loki, &lastTimestamp)
+		gotData, readErr := streamParseLogs(logs, stdoutKey, stdoutLabels, stderrKey, stderrLabels, loki, &lastTimestamp)
 		logs.Close()
 		if readErr != nil && ctx.Err() == nil {
 			logger.Error("log stream has stopped", "container", info.Name, "error", readErr)
@@ -177,7 +177,7 @@ func streamGetLogs(ctx context.Context, dockerClient *client.Client, loki *LokiC
 }
 
 // Parsing the response from the stream
-func streamParseLogs(ctx context.Context, logs io.Reader, stdoutKey string, stdoutLabels map[string]string, stderrKey string, stderrLabels map[string]string, loki *LokiClient, lastTimestamp *time.Time) (bool, error) {
+func streamParseLogs(logs io.Reader, stdoutKey string, stdoutLabels map[string]string, stderrKey string, stderrLabels map[string]string, loki *LokiClient, lastTimestamp *time.Time) (bool, error) {
 	gotData := false
 	// Reading the packet header to determine the stream type
 	header := make([]byte, 8)
