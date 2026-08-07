@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -79,10 +77,10 @@ type volumeMetric struct {
 }
 
 // Get information about all containers (second param to get all or only started containers)
-func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[string]*Info, []string) {
+func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *slog.Logger) (map[string]*Info, []string) {
 	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: All})
 	if err != nil {
-		log.Printf("failed to get container list: %v", err)
+		logger.Error("failed to get container list", "error", err)
 		return nil, nil
 	}
 	info := map[string]*Info{}
@@ -111,10 +109,10 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool) (map[stri
 }
 
 // Get metric list for specified container by id
-func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMetrics {
+func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger *slog.Logger) *BaseMetrics {
 	stats, err := dockerClient.ContainerStatsOneShot(context.Background(), id)
 	if err != nil {
-		log.Printf("failed to get container stats: %v", err)
+		logger.Error("failed to get container stats", "error", err)
 		return nil
 	}
 	defer stats.Body.Close()
@@ -122,7 +120,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	// Read statistics
 	jsonStats, err := io.ReadAll(stats.Body)
 	if err != nil {
-		log.Printf("Failed to read container stats: %v", err)
+		logger.Error("failed to read container stats", "error", err)
 		return nil
 	}
 
@@ -132,7 +130,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 	// Parsing json and fill in map
 	err = json.Unmarshal(jsonStats, &data)
 	if err != nil {
-		log.Printf("Failed to unmarshal JSON stats: %v", err)
+		logger.Error("failed to unmarshal JSON stats", "error", err)
 
 	}
 	// Extract data and fill structure
@@ -244,11 +242,11 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string) *BaseMe
 }
 
 // Get metrics from inspect method
-func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric) {
+func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric, logger *slog.Logger) {
 	defer wg.Done()
 	inspect, err := dockerClient.ContainerInspect(context.Background(), id)
 	if err != nil {
-		log.Printf("Failed to inspect container: %v", err)
+		logger.Error("failed to inspect container", "error", err)
 		return
 	}
 	// Get started time
@@ -256,7 +254,7 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	// Converting string to time type
 	startedTime, err := time.Parse(time.RFC3339Nano, StartedAt)
 	if err != nil {
-		log.Printf("Failed to parse started time: %v", err)
+		logger.Error("failed to parse started time", "error", err)
 		return
 	}
 	// Converting to timestamp
@@ -326,13 +324,13 @@ func (m *Metrics) UpdateVolumesMetrics(dockerClient *client.Client, logger *slog
 	start := time.Now()
 	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
 	if err != nil {
-		logger.Error("failed to get volume list", "error:", err)
+		logger.Error("failed to get volume list", "error", err)
 	}
 	m.volumeMetrics = volumeMetrics
 	volumeCount := len(m.volumeMetrics)
 	logger.Info("collecting volume metrics",
 		"source", "background worker",
-		"volumes", strconv.Itoa(volumeCount),
+		"volumes", volumeCount,
 		"duration", time.Since(start).Round(time.Millisecond),
 	)
 }
@@ -340,7 +338,7 @@ func (m *Metrics) UpdateVolumesMetrics(dockerClient *client.Client, logger *slog
 // Main function for getting metrics
 func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
 	// Get a list of containers with status information and all container ID array
-	m.info, m.ID = m.getContainers(dockerClient, true)
+	m.info, m.ID = m.getContainers(dockerClient, true, logger)
 
 	// Create a waiting group and a buffered channel to store data from goroutines
 	var wg sync.WaitGroup
@@ -351,7 +349,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	for _, id := range m.ID {
 		go func(containerID string) {
 			defer wg.Done()
-			res := m.getBaseMetrics(dockerClient, containerID)
+			res := m.getBaseMetrics(dockerClient, containerID, logger)
 			results <- res
 		}(id)
 	}
@@ -374,7 +372,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	inspectData := make(chan *InspectMetric, len(m.ID))
 
 	for _, id := range m.ID {
-		go m.getInspect(dockerClient, id, &wg, inspectData)
+		go m.getInspect(dockerClient, id, &wg, inspectData, logger)
 	}
 
 	wg.Wait()

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -38,6 +37,9 @@ func loggingMiddleware(m *metrics.Metrics, next http.Handler, logger *slog.Logge
 }
 
 func main() {
+	// Custom logger
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
 	// Initialize the main structure
 	var exporter *metrics.Metrics = &metrics.Metrics{}
 	var err error
@@ -45,7 +47,8 @@ func main() {
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		log.Fatalf("Failed to create Docker client: %v", err)
+		logger.Error("failed to create Docker client", "error", err)
+		os.Exit(1)
 	}
 	defer dockerClient.Close()
 
@@ -77,9 +80,6 @@ func main() {
 			exporter.CacheTTL = time.Duration(parsed) * time.Second
 		}
 	}
-
-	// Custom logger
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	// #12 Background worker for get metrics from volumes
 	exporter.GetVolumeMetrics = true
@@ -153,6 +153,7 @@ func main() {
 	logger.Info("exporter started", "port", port)
 	err = http.ListenAndServe(":"+port, logSrv)
 	if err != nil {
-		log.Fatalf("Failed to start HTTP server: %v", err)
+		logger.Error("failed to start HTTP server", "error", err)
+		os.Exit(1)
 	}
 }
