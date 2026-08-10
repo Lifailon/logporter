@@ -3,8 +3,8 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "eacad119-069c-4ce7-a895-c67287d64c91",
-    "generation": 3,
-    "creationTimestamp": "2026-08-06T09:41:42Z",
+    "generation": 2,
+    "creationTimestamp": "2026-08-07T17:01:57Z",
     "labels": {},
     "annotations": {}
   },
@@ -315,6 +315,18 @@
         "icon": "external link",
         "tooltip": "",
         "url": "https://github.com/Lifailon/logporter",
+        "tags": [],
+        "asDropdown": true,
+        "targetBlank": true,
+        "includeVars": false,
+        "keepTime": false
+      },
+      {
+        "title": "Docker Hub",
+        "type": "link",
+        "icon": "external link",
+        "tooltip": "",
+        "url": "https://hub.docker.com/r/lifailon/logporter",
         "tags": [],
         "asDropdown": true,
         "targetBlank": true,

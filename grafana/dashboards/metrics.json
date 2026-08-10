@@ -3,8 +3,8 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "4e7bc3e2-5217-4aaa-82bd-fe7a5f873c57",
-    "generation": 29,
-    "creationTimestamp": "2026-07-29T11:39:19Z",
+    "generation": 8,
+    "creationTimestamp": "2026-08-07T17:01:58Z",
     "labels": {},
     "annotations": {}
   },
@@ -17,10 +17,7 @@
             "kind": "DataQuery",
             "group": "grafana",
             "version": "v0",
-            "spec": {},
-            "labels": {
-              "grafana.app/export-label": "grafana-1"
-            }
+            "spec": {}
           },
           "enable": true,
           "hide": true,
@@ -31,7 +28,7 @@
       }
     ],
     "cursorSync": "Crosshair",
-    "description": "A simple and lightweight alternative to cAdvisor for extracting basic and custom metrics from Docker containers.",
+    "description": "A lightweight alternative to cAdvisor for exporting metrics from Docker containers.",
     "editable": true,
     "elements": {
       "panel-1": {
@@ -78,7 +75,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -96,10 +93,10 @@
                   "displayMode": "table",
                   "enableFacetedFilter": false,
                   "overflow": "ellipsis",
-                  "placement": "right",
+                  "placement": "bottom",
                   "showLegend": true,
                   "sortBy": "95th %",
-                  "sortDesc": false
+                  "sortDesc": true
                 },
                 "tooltip": {
                   "hideZeros": false,
@@ -170,85 +167,6 @@
           }
         }
       },
-      "panel-11": {
-        "kind": "Panel",
-        "spec": {
-          "id": 11,
-          "title": "Memory Usage",
-          "description": "Total memory usage of all containers",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "sum(docker_memory_usage{hostname=~\"$Hostname\"})",
-                        "legendFormat": "__auto",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.1.1",
-            "spec": {
-              "options": {
-                "colorMode": "value",
-                "graphMode": "area",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "textMode": "auto",
-                "wideLayout": true
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "decbytes",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "continuous-BlPu"
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
       "panel-12": {
         "kind": "Panel",
         "spec": {
@@ -286,7 +204,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -342,8 +260,8 @@
         "kind": "Panel",
         "spec": {
           "id": 15,
-          "title": "Disk Read Bytes",
-          "description": "Input from the block storage",
+          "title": "Disk Input (Read)",
+          "description": "Input from the block storage in bytes",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -382,7 +300,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -476,8 +394,8 @@
         "kind": "Panel",
         "spec": {
           "id": 16,
-          "title": "Disk Write KBytes",
-          "description": "Output to the block storage",
+          "title": "Disk Output (Write)",
+          "description": "Output to the block storage in bytes",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -516,7 +434,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -610,8 +528,8 @@
         "kind": "Panel",
         "spec": {
           "id": 17,
-          "title": "Network Received KBytes (Download)",
-          "description": "Input from the network",
+          "title": "Network Received (Download)",
+          "description": "Input from the network in bytes",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -650,7 +568,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -744,8 +662,8 @@
         "kind": "Panel",
         "spec": {
           "id": 18,
-          "title": "Network Transmit KBytes (Upload)",
-          "description": "Output to the network",
+          "title": "Network Transmit (Upload)",
+          "description": "Output to the network in bytes",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -784,7 +702,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -919,7 +837,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -1053,7 +971,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -1187,7 +1105,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -1205,7 +1123,7 @@
                   "displayMode": "table",
                   "enableFacetedFilter": false,
                   "overflow": "ellipsis",
-                  "placement": "right",
+                  "placement": "bottom",
                   "showLegend": true
                 },
                 "tooltip": {
@@ -1232,274 +1150,6 @@
                   },
                   "color": {
                     "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 10,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 2,
-                    "pointSize": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-25": {
-        "kind": "Panel",
-        "spec": {
-          "id": 25,
-          "title": "Standart Logs (stdout)",
-          "description": "Number of logs from standart output",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "disableTextWrap": false,
-                        "editorMode": "code",
-                        "exemplar": false,
-                        "expr": "round(increase(docker_logs_stdout_count{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval]))",
-                        "fullMetaSearch": false,
-                        "includeNullMetadata": true,
-                        "instant": false,
-                        "interval": "",
-                        "legendFormat": "{{containerName}} ({{hostname}})",
-                        "range": true,
-                        "useBackend": false
-                      }
-                    },
-                    "refId": "B",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.1.1",
-            "spec": {
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "min",
-                    "max",
-                    "mean",
-                    "p95"
-                  ],
-                  "displayMode": "table",
-                  "enableFacetedFilter": false,
-                  "overflow": "ellipsis",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "none",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 80,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "continuous-GrYlRd"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 10,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 2,
-                    "pointSize": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-26": {
-        "kind": "Panel",
-        "spec": {
-          "id": 26,
-          "title": "Error Logs (stderr)",
-          "description": "Number of logs from error output",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "disableTextWrap": false,
-                        "editorMode": "code",
-                        "exemplar": false,
-                        "expr": "round(increase(docker_logs_stderr_count{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval]))",
-                        "fullMetaSearch": false,
-                        "includeNullMetadata": true,
-                        "instant": false,
-                        "interval": "",
-                        "legendFormat": "{{containerName}} ({{hostname}})",
-                        "range": true,
-                        "useBackend": false
-                      }
-                    },
-                    "refId": "B",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.1.1",
-            "spec": {
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "min",
-                    "max",
-                    "mean",
-                    "p95"
-                  ],
-                  "displayMode": "table",
-                  "enableFacetedFilter": false,
-                  "overflow": "ellipsis",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "none",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 80,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "continuous-RdYlGr"
                   },
                   "custom": {
                     "axisBorderShow": false,
@@ -1589,7 +1239,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -1723,7 +1373,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -1753,140 +1403,6 @@
               "fieldConfig": {
                 "defaults": {
                   "unit": "percentunit",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 80,
-                        "color": "red"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "palette-classic"
-                  },
-                  "custom": {
-                    "axisBorderShow": false,
-                    "axisCenteredZero": false,
-                    "axisColorMode": "text",
-                    "axisLabel": "",
-                    "axisPlacement": "auto",
-                    "barAlignment": 0,
-                    "barWidthFactor": 0.6,
-                    "drawStyle": "line",
-                    "fillOpacity": 10,
-                    "gradientMode": "none",
-                    "hideFrom": {
-                      "legend": false,
-                      "tooltip": false,
-                      "viz": false
-                    },
-                    "insertNulls": false,
-                    "lineInterpolation": "linear",
-                    "lineStyle": {
-                      "fill": "solid"
-                    },
-                    "lineWidth": 2,
-                    "pointSize": 1,
-                    "scaleDistribution": {
-                      "type": "linear"
-                    },
-                    "showPoints": "auto",
-                    "showValues": false,
-                    "spanNulls": false,
-                    "stacking": {
-                      "group": "A",
-                      "mode": "none"
-                    },
-                    "thresholdsStyle": {
-                      "mode": "off"
-                    }
-                  }
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-30": {
-        "kind": "Panel",
-        "spec": {
-          "id": 30,
-          "title": "Total Logs (stdout + stderr)",
-          "description": "Number of logs from all output",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "disableTextWrap": false,
-                        "editorMode": "code",
-                        "exemplar": false,
-                        "expr": "round(increase(docker_logs_stdout_count{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval]))\r\n+\r\nround(increase(docker_logs_stderr_count{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval]))",
-                        "fullMetaSearch": false,
-                        "includeNullMetadata": true,
-                        "instant": false,
-                        "interval": "",
-                        "legendFormat": "{{containerName}} ({{hostname}})",
-                        "range": true,
-                        "useBackend": false
-                      }
-                    },
-                    "refId": "B",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "timeseries",
-            "version": "13.1.1",
-            "spec": {
-              "options": {
-                "annotations": {
-                  "clustering": -1,
-                  "multiLane": false
-                },
-                "legend": {
-                  "calcs": [
-                    "lastNotNull",
-                    "min",
-                    "max",
-                    "mean",
-                    "p95"
-                  ],
-                  "displayMode": "table",
-                  "enableFacetedFilter": false,
-                  "overflow": "ellipsis",
-                  "placement": "bottom",
-                  "showLegend": true
-                },
-                "tooltip": {
-                  "hideZeros": false,
-                  "mode": "single",
-                  "sort": "none"
-                }
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "none",
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -1984,7 +1500,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -2031,8 +1547,8 @@
         "kind": "Panel",
         "spec": {
           "id": 35,
-          "title": "Disk IOps",
-          "description": "Total block storage usage of all containers",
+          "title": "IOps",
+          "description": "Total block storage usage (input and output) of all containers",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2083,7 +1599,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -2164,7 +1680,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "bargauge",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "displayMode": "basic",
@@ -2230,8 +1746,8 @@
         "kind": "Panel",
         "spec": {
           "id": 39,
-          "title": "Net Speed",
-          "description": "Total network usage of all containers",
+          "title": "Network",
+          "description": "Total network usage speed of all containers",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -2283,7 +1799,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -2330,7 +1846,7 @@
         "kind": "Panel",
         "spec": {
           "id": 48,
-          "title": "Containers Timeline",
+          "title": "Timeline of Life",
           "description": "",
           "links": [],
           "data": {
@@ -2364,7 +1880,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "state-timeline",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "alignValue": "left",
@@ -2466,7 +1982,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -2525,7 +2041,7 @@
         "kind": "Panel",
         "spec": {
           "id": 51,
-          "title": "New panel",
+          "title": "Volume Size",
           "description": "",
           "links": [],
           "data": {
@@ -2544,10 +2060,6 @@
                         "expr": "docker_volume_size{hostname=~\"$Hostname\"}",
                         "legendFormat": "{{volumeName}}",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "A",
@@ -2567,14 +2079,10 @@
                         "instant": false,
                         "legendFormat": "SUMMARY",
                         "range": true
-                      },
-                      "labels": {
-                        "grafana.app/export-label": "prometheus-1",
-                        "grafana.app/export-datasource-name": "prometheus"
                       }
                     },
                     "refId": "B",
-                    "hidden": false
+                    "hidden": true
                   }
                 }
               ],
@@ -2585,7 +2093,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "bargauge",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "displayMode": "lcd",
@@ -2642,6 +2150,441 @@
           }
         }
       },
+      "panel-52": {
+        "kind": "Panel",
+        "spec": {
+          "id": 52,
+          "title": "Image Size",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "docker_image_size{hostname=~\"$Hostname\"}",
+                        "legendFormat": "{{imageTag}}",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                },
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(docker_image_size{hostname=~\"$Hostname\"})",
+                        "instant": false,
+                        "legendFormat": "SUMMARY",
+                        "range": true
+                      }
+                    },
+                    "refId": "B",
+                    "hidden": true
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "bargauge",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "displayMode": "lcd",
+                "legend": {
+                  "calcs": [],
+                  "displayMode": "list",
+                  "overflow": "ellipsis",
+                  "placement": "right",
+                  "showLegend": false
+                },
+                "maxVizHeight": 300,
+                "minVizHeight": 16,
+                "minVizWidth": 8,
+                "namePlacement": "left",
+                "orientation": "horizontal",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showUnfilled": true,
+                "sizing": "auto",
+                "valueMode": "text"
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "percentage",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 60,
+                        "color": "orange"
+                      },
+                      {
+                        "value": 80,
+                        "color": "red"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds"
+                  }
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-53": {
+        "kind": "Panel",
+        "spec": {
+          "id": 53,
+          "title": "Memory Usage",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(docker_memory_usage{hostname=~\"$Hostname\"})",
+                        "legendFormat": "__auto",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {},
+                "textMode": "auto",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "semi-dark-blue"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds",
+                    "fixedColor": "#ad46ff"
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-54": {
+        "kind": "Panel",
+        "spec": {
+          "id": 54,
+          "title": "Images Size",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(docker_image_size{hostname=~\"$Hostname\"})",
+                        "legendFormat": "__auto",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {},
+                "textMode": "auto",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "semi-dark-blue"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds",
+                    "fixedColor": "#ad46ff"
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-55": {
+        "kind": "Panel",
+        "spec": {
+          "id": 55,
+          "title": "Memory Usage",
+          "description": "Total memory usage of all containers",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum((docker_memory_usage{hostname=~\"$Hostname\"} / docker_memory_total{hostname=~\"$Hostname\"}) * 100)",
+                        "legendFormat": "__auto",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "colorMode": "value",
+                "graphMode": "area",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "textMode": "auto",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "percent",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "continuous-BlPu"
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-56": {
+        "kind": "Panel",
+        "spec": {
+          "id": 56,
+          "title": "Volumes Size",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(docker_volume_size{hostname=~\"$Hostname\"})",
+                        "legendFormat": "__auto",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {},
+                "textMode": "auto",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "bytes",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "semi-dark-blue"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds",
+                    "fixedColor": "#ad46ff"
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-7": {
         "kind": "Panel",
         "spec": {
@@ -2686,7 +2629,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.1",
+            "version": "13.1.0",
             "spec": {
               "options": {
                 "annotations": {
@@ -2704,7 +2647,7 @@
                   "displayMode": "table",
                   "enableFacetedFilter": false,
                   "overflow": "ellipsis",
-                  "placement": "right",
+                  "placement": "bottom",
                   "showLegend": true,
                   "sortBy": "95th %",
                   "sortDesc": false
@@ -2798,7 +2741,7 @@
                         "x": 0,
                         "y": 0,
                         "width": 6,
-                        "height": 15,
+                        "height": 18,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-36"
@@ -2811,7 +2754,7 @@
                         "x": 6,
                         "y": 0,
                         "width": 2,
-                        "height": 4,
+                        "height": 5,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-32"
@@ -2824,7 +2767,7 @@
                         "x": 8,
                         "y": 0,
                         "width": 2,
-                        "height": 4,
+                        "height": 5,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-12"
@@ -2836,8 +2779,21 @@
                       "spec": {
                         "x": 10,
                         "y": 0,
-                        "width": 14,
-                        "height": 15,
+                        "width": 2,
+                        "height": 6,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-53"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 0,
+                        "width": 12,
+                        "height": 18,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-1"
@@ -2848,9 +2804,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 6,
-                        "y": 4,
+                        "y": 5,
                         "width": 2,
-                        "height": 4,
+                        "height": 5,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-49"
@@ -2861,12 +2817,25 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 8,
-                        "y": 4,
+                        "y": 5,
                         "width": 2,
-                        "height": 4,
+                        "height": 5,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-11"
+                          "name": "panel-55"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 10,
+                        "y": 6,
+                        "width": 2,
+                        "height": 6,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-56"
                         }
                       }
                     },
@@ -2874,9 +2843,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 6,
-                        "y": 8,
+                        "y": 10,
                         "width": 2,
-                        "height": 7,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-39"
@@ -2887,9 +2856,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 8,
-                        "y": 8,
+                        "y": 10,
                         "width": 2,
-                        "height": 7,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-35"
@@ -2899,10 +2868,23 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
+                        "x": 10,
+                        "y": 12,
+                        "width": 2,
+                        "height": 6,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-54"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
                         "x": 0,
-                        "y": 15,
-                        "width": 10,
-                        "height": 15,
+                        "y": 18,
+                        "width": 12,
+                        "height": 14,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-23"
@@ -2912,10 +2894,10 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 10,
-                        "y": 15,
-                        "width": 14,
-                        "height": 15,
+                        "x": 12,
+                        "y": 18,
+                        "width": 12,
+                        "height": 14,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-7"
@@ -2926,9 +2908,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 30,
+                        "y": 32,
                         "width": 6,
-                        "height": 13,
+                        "height": 14,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-17"
@@ -2939,9 +2921,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 6,
-                        "y": 30,
+                        "y": 32,
                         "width": 6,
-                        "height": 13,
+                        "height": 14,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-18"
@@ -2952,9 +2934,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 12,
-                        "y": 30,
+                        "y": 32,
                         "width": 6,
-                        "height": 13,
+                        "height": 14,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-15"
@@ -2965,12 +2947,52 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 18,
-                        "y": 30,
+                        "y": 32,
                         "width": 6,
-                        "height": 13,
+                        "height": 14,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-16"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Storage",
+              "collapse": false,
+              "layout": {
+                "kind": "GridLayout",
+                "spec": {
+                  "items": [
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 24,
+                        "height": 13,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-51"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 0,
+                        "y": 13,
+                        "width": 24,
+                        "height": 13,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-52"
                         }
                       }
                     }
@@ -3074,76 +3096,10 @@
                         "x": 0,
                         "y": 0,
                         "width": 24,
-                        "height": 14,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-48"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          {
-            "kind": "RowsLayoutRow",
-            "spec": {
-              "title": "Custom Metrics (Volumes and Logs)",
-              "collapse": false,
-              "layout": {
-                "kind": "GridLayout",
-                "spec": {
-                  "items": [
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 0,
-                        "width": 24,
                         "height": 13,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-51"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 13,
-                        "width": 12,
-                        "height": 14,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-25"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 12,
-                        "y": 13,
-                        "width": 12,
-                        "height": 14,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-26"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 0,
-                        "y": 27,
-                        "width": 24,
-                        "height": 14,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-30"
+                          "name": "panel-48"
                         }
                       }
                     }
@@ -3179,6 +3135,18 @@
         "targetBlank": true,
         "includeVars": false,
         "keepTime": false
+      },
+      {
+        "title": "Grafana Labs",
+        "type": "link",
+        "icon": "external link",
+        "tooltip": "",
+        "url": "https://grafana.com/grafana/dashboards/23848-docker-exporter-logporter",
+        "tags": [],
+        "asDropdown": false,
+        "targetBlank": true,
+        "includeVars": false,
+        "keepTime": false
       }
     ],
     "liveNow": false,
@@ -3201,7 +3169,7 @@
       "hideTimepicker": false,
       "fiscalYearStartMonth": 0
     },
-    "title": "Docker Exporter (logporter)",
+    "title": "Docker Metrics",
     "variables": [
       {
         "kind": "QueryVariable",
