@@ -12,7 +12,7 @@ services:
       - DOCKER_METRICS_CACHE=15 # 15s
       - DOCKER_METRICS_VOLUME=true
       - DOCKER_METRICS_VOLUME_CACHE=30 # 30m
-      # Remove the LOKI_URL variable or leave it empty to disable collecting and sending logs to Loki
+      # Remove the LOKI_URL variable or leave it empty to disable log collection
       - LOKI_URL=http://loki:3100
       # Optional: basic auth and tenant
       # - LOKI_USERNAME=
@@ -64,7 +64,7 @@ services:
     volumes:
       - prometheus_data:/prometheus
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./prometheus/alert.yml:/etc/prometheus/alert.yml
+      - ./prometheus/alert/rules.yml:/etc/prometheus/alert.yml
 
   loki:
     image: grafana/loki:latest

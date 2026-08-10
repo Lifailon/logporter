@@ -1,0 +1,123 @@
+groups:
+  - name: CPU
+    rules:
+      - alert: DOCKER_CONTAINER_CPU_TOTAL_WARN
+        expr: avg(rate(docker_cpu_usage_total[5m])) by (containerName,hostname) * 100 > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "CPU usage above 50% in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+      - alert: DOCKER_CONTAINER_CPU_TOTAL_ERR
+        expr: avg(rate(docker_cpu_usage_total[5m])) by (containerName,hostname) * 100 > 90
+        for: 5m
+        labels:
+          severity: error
+        annotations:
+          description: "CPU usage above 90% in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+      - alert: DOCKER_CONTAINER_CPU_USER_WARN
+        expr: avg(rate(docker_cpu_usage_user[5m])) by (containerName,hostname) * 100 > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "User CPU usage above 50% in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+      - alert: DOCKER_CONTAINER_CPU_KERNEL_WARN
+        expr: avg(rate(docker_cpu_usage_kernel[5m])) by (containerName,hostname) * 100 > 50
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Kernel CPU usage above 50% in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+  - name: MEMORY
+    rules:
+      - alert: DOCKER_CONTAINER_MEMORY_WARN
+        expr: (docker_memory_usage / docker_memory_total) * 100 > 50 and docker_memory_total > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Memory usage above 50% in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+      - alert: DOCKER_CONTAINER_MEMORY_ERR
+        expr: (docker_memory_usage / docker_memory_total) * 100 > 90 and docker_memory_total > 0
+        for: 5m
+        labels:
+          severity: error
+        annotations:
+          description: "Memory usage above 90% in {{ $labels.containerName }} container on {{ $labels.hostname }} (OOM risk)"
+
+  - name: NETWORK
+    rules:
+      - alert: DOCKER_CONTAINER_NETWORK_DOWN_WARN
+        expr: avg(rate(docker_network_received_bytes[5m])) by (containerName,hostname) > 10485760
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Network receives (download) above 10 MB/s in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+      - alert: DOCKER_CONTAINER_NETWORK_UP_WARN
+        expr: avg(rate(docker_network_transmit_bytes[5m])) by (containerName,hostname) > 10485760
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Network transmits (upload) above 10 MB/s in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+  - name: IOps
+    rules:
+      - alert: DOCKER_CONTAINER_IO_READ_WARN
+        expr: avg(rate(docker_io_read_bytes[5m])) by (containerName,hostname) > 10485760
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Disk input (read) above 10 MB/s in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+      - alert: DOCKER_CONTAINER_IO_WRITE_WARN
+        expr: avg(rate(docker_io_write_bytes[5m])) by (containerName,hostname) > 10485760
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Disk output (write) above 10 MB/s in {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+  - name: STORAGE
+    rules:
+      - alert: DOCKER_VOLUME_SIZE_WARN
+        expr: avg(docker_volume_size) by (volumeName,hostname) > 10737418240
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Volume size above 10 GB in {{ $labels.volumeName }} on {{ $labels.hostname }}"
+
+      - alert: DOCKER_IMAGE_SIZE_WARN
+        expr: avg(docker_image_size) by (imageTag,hostname) > 10737418240
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          description: "Image size above 10 GB in {{ $labels.imageTag }} on {{ $labels.hostname }}"
+
+  - name: STATUS
+    rules:
+      - alert: DOCKER_CONTAINER_DOWN
+        expr: docker_container_status == 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          description: "Stopped {{ $labels.containerName }} container on {{ $labels.hostname }}"
+
+      - alert: DOCKER_CONTAINER_REBOOT
+        expr: avg(changes(docker_started_time[5m])) by (containerName,hostname) > 0
+        labels:
+          severity: warning
+        annotations:
+          description: "Restarted {{ $labels.containerName }} container on {{ $labels.hostname }}"
