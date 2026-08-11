@@ -46,9 +46,29 @@ services:
     restart: always
     volumes:
       - /:/rootfs:ro
-      - /var/run:/var/run:rw
+      - /var/run:/var/run:ro
       - /sys:/sys:ro
       - /var/lib/docker/:/var/lib/docker:ro
+    ports:
+      - 8081:8080
+    command:
+      - '--docker_only=true'
+      - '--disable_root_cgroup_stats=true'
+      - '--store_container_labels=false'
+      - '--enable_load_reader=false'
+      - '--max_procs=1'
+      - '--storage_duration=0m0s'
+      - '--allow_dynamic_housekeeping=true'
+      - '--global_housekeeping_interval=1m'
+      - '--housekeeping_interval=1h'
+      - '--max_housekeeping_interval=1h'
+      # Disabled by default
+      # - '--disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp'
+      # Enabled metrics (overrides disable_metrics)
+      # - '--enable_metrics=cpu,cpuLoad,diskIO,memory,network,app,disk,oom_event,percpu,perf_event'
+      - '--enable_metrics=cpu,cpuLoad,diskIO,memory,network'
+      - '--profiling=false'
+      - '--log_cadvisor_usage=false'
 
   grafana:
     image: grafana/grafana:latest
