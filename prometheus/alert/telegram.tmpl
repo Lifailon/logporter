@@ -1,0 +1,43 @@
+{{ define "telegram.default" }}
+
+{{ range .Alerts }}
+
+{{- if .Labels.severity }}
+{{- if eq .Labels.severity "critical" }}
+🔥 [CRITICAL] <b>{{ .Labels.alertname }}</b>
+{{- else if eq .Labels.severity "error" }}
+🚩 [ERROR] <b>{{ .Labels.alertname }}</b>
+{{- else if eq .Labels.severity "warning" }}
+⚠️ [WARNING] <b>{{ .Labels.alertname }}</b>
+{{- else }}
+👻 [{{ .Labels.severity }}] <b>{{ .Labels.alertname }}</b>
+{{- end }}
+{{- end }}
+
+{{- if eq .Status "resolved" }}
+<b>Status:</b> ✅ Resolved
+{{- else }}
+<b>Status:</b> 🚨 Firing
+{{- end }}
+
+{{- if .Labels.hostname }}
+<b>Hostname:</b> {{ .Labels.hostname }}
+{{- end }}
+
+{{- if .Labels.composeProject }}
+<b>Compose project:</b> {{ .Labels.composeProject }}
+{{- end }}
+
+{{- if .Labels.containerName }}
+<b>Container:</b> {{ .Labels.containerName }}
+{{- end }}
+
+{{- if .Annotations.description }}
+<b>Description:</b> {{ .Annotations.description }}
+{{- end }}
+
+{{- "\n" }}
+
+{{- end }}
+
+{{- end }}

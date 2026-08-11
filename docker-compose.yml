@@ -66,6 +66,19 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./prometheus/alert/rules.yml:/etc/prometheus/alert.yml
 
+  alertmanager:
+    image: prom/alertmanager
+    container_name: alertmanager
+    restart: always
+    ports:
+      - 9093:9093
+    # Optional: setting up a proxy connection for alerts (e.g. to access the Telegram API).
+    # environment:
+    #   - HTTPS_PROXY=
+    volumes:
+      - ./prometheus/alert/alertmanager.yml:/etc/alertmanager/config.yml
+      - ./prometheus/alert/telegram.tmpl:/etc/alertmanager/telegram.tmpl
+
   loki:
     image: grafana/loki:latest
     container_name: loki

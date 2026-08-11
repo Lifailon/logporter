@@ -1,0 +1,17 @@
+templates:
+  - '/etc/alertmanager/*.tmpl'
+
+receivers:
+  - name: telegram
+    telegram_configs:
+      - chat_id: 123456789
+        bot_token: <API_KEY>
+        api_url: "https://api.telegram.org"
+        parse_mode: HTML
+        # message: '{{ template "telegram.default.message" . }}'
+        # Custom telegram template
+        message: '{{ template "telegram.default" . }}'
+
+route:
+  receiver: telegram
+  group_by: ['alertname', 'hostname']
