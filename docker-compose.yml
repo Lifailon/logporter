@@ -40,6 +40,16 @@ services:
   #   volumes:
   #     - /var/run/docker.sock:/var/run/docker.sock:ro
 
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
