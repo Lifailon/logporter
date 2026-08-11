@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "4e7bc3e2-5217-4aaa-82bd-fe7a5f873c57",
-    "generation": 8,
+    "generation": 13,
     "creationTimestamp": "2026-08-07T17:01:58Z",
     "labels": {},
     "annotations": {}
@@ -53,7 +53,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_cpu_usage_total{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_cpu_usage_total{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -278,7 +278,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_io_read_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_io_read_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -412,7 +412,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_io_write_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_io_write_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -546,7 +546,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_network_received_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_network_received_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -680,7 +680,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_network_transmit_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_network_transmit_bytes{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[1m])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -815,7 +815,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_network_received_packages{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_network_received_packages{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -949,7 +949,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_network_transmit_packages{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_network_transmit_packages{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -1083,7 +1083,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "docker_process_pids_count{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}",
+                        "expr": "sum by (hostname, containerName) (\r\n  docker_process_pids_count{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -1217,7 +1217,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_cpu_usage_user{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_cpu_usage_user{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -1351,7 +1351,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "rate(docker_cpu_usage_kernel{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])",
+                        "expr": "sum by (hostname, containerName) (\r\n  rate(docker_cpu_usage_kernel{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}[$__rate_interval])\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -1662,13 +1662,13 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "time() - docker_started_time{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}",
+                        "expr": "max by (containerName, hostname, composeProject) (\r\n  time() - docker_started_time{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}\r\n)",
                         "interval": "",
                         "legendFormat": "{{containerName}} ({{hostname}})",
                         "range": true
                       }
                     },
-                    "refId": "A",
+                    "refId": "B",
                     "hidden": false
                   }
                 }
@@ -2585,6 +2585,107 @@
           }
         }
       },
+      "panel-57": {
+        "kind": "Panel",
+        "spec": {
+          "id": 57,
+          "title": "Alert List by Container Name",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "alertlist",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "alertInstanceLabelFilter": "",
+                "alertName": "",
+                "dashboardAlerts": false,
+                "groupBy": [
+                  "hostname",
+                  "containerName"
+                ],
+                "groupMode": "custom",
+                "maxItems": 20,
+                "showInactiveAlerts": false,
+                "sortOrder": 1,
+                "stateFilter": {
+                  "error": true,
+                  "firing": true,
+                  "noData": false,
+                  "normal": false,
+                  "pending": true,
+                  "recovering": true
+                },
+                "viewMode": "list"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-58": {
+        "kind": "Panel",
+        "spec": {
+          "id": 58,
+          "title": "🚨 Alerts",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "alertlist",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "alertInstanceLabelFilter": "",
+                "alertName": "",
+                "dashboardAlerts": false,
+                "datasource": "prometheus",
+                "groupBy": [
+                  "containerName",
+                  "hostname"
+                ],
+                "groupMode": "custom",
+                "maxItems": 100,
+                "showInactiveAlerts": false,
+                "sortOrder": 1,
+                "stateFilter": {
+                  "error": true,
+                  "firing": true,
+                  "noData": false,
+                  "normal": false,
+                  "pending": true,
+                  "recovering": true
+                },
+                "viewMode": "stat"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
       "panel-7": {
         "kind": "Panel",
         "spec": {
@@ -2607,7 +2708,7 @@
                         "disableTextWrap": false,
                         "editorMode": "code",
                         "exemplar": false,
-                        "expr": "docker_memory_usage{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}",
+                        "expr": "sum by (hostname, containerName) (\r\n  docker_memory_usage{hostname=~\"$Hostname\", composeProject=~\"$ComposeProject\", containerName=~\"$ContainerName\"}\r\n)",
                         "fullMetaSearch": false,
                         "includeNullMetadata": true,
                         "instant": false,
@@ -2650,7 +2751,7 @@
                   "placement": "bottom",
                   "showLegend": true,
                   "sortBy": "95th %",
-                  "sortDesc": false
+                  "sortDesc": true
                 },
                 "tooltip": {
                   "hideZeros": false,
@@ -2780,10 +2881,10 @@
                         "x": 10,
                         "y": 0,
                         "width": 2,
-                        "height": 6,
+                        "height": 5,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-53"
+                          "name": "panel-58"
                         }
                       }
                     },
@@ -2830,12 +2931,12 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 10,
-                        "y": 6,
+                        "y": 5,
                         "width": 2,
-                        "height": 6,
+                        "height": 5,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-56"
+                          "name": "panel-53"
                         }
                       }
                     },
@@ -2869,9 +2970,22 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 10,
-                        "y": 12,
+                        "y": 10,
                         "width": 2,
-                        "height": 6,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-56"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 10,
+                        "y": 14,
+                        "width": 2,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-54"
@@ -2953,6 +3067,32 @@
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-16"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "kind": "RowsLayoutRow",
+            "spec": {
+              "title": "Alerts",
+              "collapse": false,
+              "layout": {
+                "kind": "AutoGridLayout",
+                "spec": {
+                  "maxColumnCount": 3,
+                  "columnWidthMode": "standard",
+                  "rowHeightMode": "standard",
+                  "items": [
+                    {
+                      "kind": "AutoGridLayoutItem",
+                      "spec": {
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-57"
                         }
                       }
                     }

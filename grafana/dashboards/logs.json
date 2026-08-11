@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "eacad119-069c-4ce7-a895-c67287d64c91",
-    "generation": 2,
+    "generation": 3,
     "creationTimestamp": "2026-08-07T17:01:57Z",
     "labels": {},
     "annotations": {}
@@ -171,7 +171,7 @@
                       "spec": {
                         "direction": "backward",
                         "editorMode": "code",
-                        "expr": "{hostname=~\"$Hostname\",composeProject=~\"$ComposeProject\",containerName=~\"$ContainerName\",stream=~\"$Stream\"}\r\n| json\r\n| logfmt\r\n| drop __error__\r\n|~ \"(?i)$Search\"\r\n| pattern `<raw_text>`\r\n| label_format serviceName=\"{{if .composeService}}{{.composeService}}{{else}}{{.containerName}}{{end}}\"\r\n| line_format \"\\x1b[36m{{ alignLeft 20 .serviceName }}\\x1b[0m {{.raw_text}}\"",
+                        "expr": "{hostname=~\"$Hostname\",composeProject=~\"$ComposeProject\",containerName=~\"$ContainerName\",stream=~\"$Stream\"}\r\n| json\r\n| logfmt\r\n| drop __error__\r\n|~ \"(?i)$Search\"\r\n| pattern `<raw_text>`\r\n| label_format serviceName=\"{{if .composeService}}[{{.composeProject}}] {{.composeService}}{{else}}{{.containerName}}{{end}}\"\r\n| line_format \"\\x1b[36m{{ alignLeft 30 .serviceName }}\\x1b[0m {{.raw_text}}\"",
                         "legendFormat": "",
                         "queryType": "range"
                       }
