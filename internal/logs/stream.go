@@ -134,10 +134,7 @@ func streamGetLogs(ctx context.Context, dockerClient *client.Client, loki *LokiC
 	stdoutKey := labelsKey(stdoutLabels)
 	stderrKey := labelsKey(stderrLabels)
 
-	var lastTimestamp time.Time
-	if loki.history > 0 {
-		lastTimestamp = time.Now().Add(-loki.history)
-	}
+	lastTimestamp := time.Now()
 
 	for {
 		logsOptions := container.LogsOptions{

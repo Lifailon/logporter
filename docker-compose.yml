@@ -21,7 +21,6 @@ services:
       - LOKI_PUSH_SECONDS=5
       - LOKI_PUSH_LINES=1000
       - LOKI_BUFFER_LINES=10000
-      - LOKI_SINCE=0
       # Optional: use a docker proxy instead of the docker socket mount for improved security
       # - DOCKER_HOST=tcp://docker-proxy:2375
     volumes:

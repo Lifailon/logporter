@@ -40,7 +40,6 @@ type LokiClient struct {
 	tenant      string
 	httpClient  *http.Client
 	logger      *slog.Logger
-	history     time.Duration
 	batchSize   int
 	batchWindow time.Duration
 	bufferSize  int
@@ -73,11 +72,6 @@ func NewClient(logger *slog.Logger) *LokiClient {
 	}
 	if v, err := strconv.Atoi(os.Getenv("LOKI_BUFFER_LINES")); err == nil && v > 0 {
 		l.bufferSize = v
-	}
-	if v := os.Getenv("LOKI_SINCE"); v != "" {
-		if d, err := time.ParseDuration(v); err == nil && d >= 0 {
-			l.history = d
-		}
 	}
 	return l
 }
