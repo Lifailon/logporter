@@ -1,24 +1,19 @@
-# logporter
+![](/img/logo.png)
 
 [![Docker Hub Pulls](https://img.shields.io/docker/pulls/lifailon/logporter?label=Docker+Hub+Pulls&logo=docker)](https://hub.docker.com/r/lifailon/logporter) \
 [![Docker Image Size](https://img.shields.io/docker/image-size/lifailon/logporter?label=Docker+Image+Size&logo=docker)](https://hub.docker.com/r/lifailon/logporter/tags)
 
-A simple and lightweight alternative to [cAdvisor](https://github.com/google/cadvisor) for extracting basic and custom metrics from Docker containers.
+A lightweight alternative to [cAdvisor](https://github.com/google/cadvisor) for exporting metrics from Docker containers and log collector for sending to Loki.
 
-The exporter supports a metric displaying the number of logs over the scrape period. With proper logging configuration and stream separation on the application side, this metric can reflect the actual traffic volume and error rate.
+## Performance
 
-Comparative measurement of CPU and memory usage from `cAdvisor` and `logporter` metrics in 3 hours:
+Comparative CPU and memory usage measurements using `logporter` with log collection enabled (left) and `cAdvisor` (right) over a 24-hour period for 25 containers:
 
-![](/img/cadvisor-cpu-usage.jpg)
-
-![](/img/logporter-cpu-usage.jpg)
-
-> [!NOTE]
-> On average, CPU consumption is 15-20 times lower and memory consumption is 10 times lower in the basic metrics mode (including IOps and uptime) compared to `cAdvisor`.
+![](/img/logporter-vs-cadvisor.jpg)
 
 ## Quick start
 
-Clone the repository and run the pre-configured monitoring stack with a single command:
+Clone the repository and run the monitoring full-stack with one command:
 
 ```bash
 git clone https://github.com/Lifailon/logporter
@@ -26,19 +21,15 @@ cd logporter
 docker-compose up -d
 ```
 
-The dashboard and Prometheus data source with the added exporter are already connected to Grafana.
+The stack includes Prometheus with an exporter connected and alerts configured, a Loki server targeted by a log collector, and Grafana with pre-configured data sources and added dashboards.
 
 Go to Grafana UI: `http://localhost:3000` and enter `admin`:`admin`.
 
-## Manual configuration
+## Manual setup
 
-- Build the Docker image yourself (optional):
+### Exporter
 
-```bash
-docker build -t lifailon/logporter .
-```
-
-- Run the exporter in a container using a locally built image or one published on [Docker Hub](https://hub.docker.com/r/lifailon/logporter):
+- Run the exporter in a container using the image published on [Docker Hub](https://hub.docker.com/r/lifailon/logporter):
 
 ```bash
 docker run -d --name logporter \
@@ -71,21 +62,16 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 ```
 
-Use environment variables to configure the exporter:
+List of environment variables to configure:
 
-| Label                         | Type      | Default | Description                                                                               |
-| -                             | -         | -       | -                                                                                         |
-| `DOCKER_METRICS_PORT`         | `int`     | `9333`  | The port on which the exporter is listening.                                              |
-| `DOCKER_METRICS_HOSTNAME`     | `string`  | `""`    | A custom hostname that appears in metric tags.                                            |
-| `DOCKER_METRICS_CACHE`        | `int`     | `15`    | Cache time for all collected metrics in seconds.                                          |
-| `DOCKER_METRICS_LOG`          | `boolean` | `false` | Collecting the number of messages in logs from all streams.                               |
-| `DOCKER_METRICS_LOG_CACHE`    | `int`     | `15`    | Cache time for collected logs metrics in seconds.                                         |
-| `DOCKER_METRICS_VOLUME`       | `boolean` | `true`  | Collecting a list of all volumes and their sizes.                                         |
-| `DOCKER_METRICS_VOLUME_CACHE` | `int`     | `30`    | Cache time for collected volumes metrics in minutes.                                      |
-| `DOCKER_HOST`                 | `string`  | `""`    | Optional: use a docker proxy instead of the docker socket mount for additional security.  |
-
-> [!WARNING]
-> Using custom metrics may increase resource consumption (depending on the number of containers and the logs they contain). The metrics themselves are transmitted instantly thanks to data collection by background workers and caching. Check the duration value in the exporter logs to ensure that it does not exceed the scrape interval.
+| Label                         | Type      | Default | Description                                                                                                                         |
+| -                             | -         | -       | -                                                                                                                                   |
+| `DOCKER_METRICS_PORT`         | `int`     | `9333`  | The port on which the exporter is listening.                                                                                        |
+| `DOCKER_METRICS_HOSTNAME`     | `string`  | `""`    | Custom hostname displayed in Prometheus and Loki labels.                                                                            |
+| `DOCKER_METRICS_CACHE`        | `int`     | `15`    | Cache time for all collected metrics in seconds. Until the cache expires, queried metrics will return the last value received.      |
+| `DOCKER_METRICS_VOLUME`       | `boolean` | `true`  | Enable metrics collection for all volumes and their size. Data collection occurs in the background, without waiting for scrape.     |
+| `DOCKER_METRICS_VOLUME_CACHE` | `int`     | `30`    | Cache time for collected volumes metrics in minutes.                                                                                |
+| `DOCKER_HOST`                 | `string`  | `""`    | Change the socket address to monitor a remote host or proxy instead of mounting a Docker socket for increased security (optional).  |
 
 - Connect the new target to the Prometheus configuration file:
 
@@ -99,11 +85,33 @@ scrape_configs:
         - localhost:9333
 ```
 
-- Import the prepared public [Grafana dashboard](https://grafana.com/grafana/dashboards/23848-docker-exporter-logporter) using the id `23848` or from [json](https://raw.githubusercontent.com/Lifailon/logporter/refs/heads/main/grafana/dashboard.json) file.
+- Import the prepared public [Grafana dashboard](https://grafana.com/grafana/dashboards/23848-docker-exporter-logporter) using the id `23848` or from [json](https://raw.githubusercontent.com/Lifailon/logporter/refs/heads/main/grafana/dashboards/metrics.json) file.
 
-![](/img/metrics-1.jpg)
+![](/img/basic-metrics.jpg)
 
-![](/img/metrics-2.jpg)
+- Mount the alert [rules](https://github.com/Lifailon/logporter/blob/main/prometheus/alert/rules.yml) file to your Prometheus container at `/etc/prometheus/alert.yml` (this is a basic example, you can customize it to suit your needs) to display the number and list of alerts in the Grafana dashboard.
+
+![](/img/storage-metrics.jpg)
+
+### Loki
+
+- Configure a connection with Loki to send logs using environment variables:
+
+| Label                         | Type      | Default | Description                                                                     |
+| -                             | -         | -       | -                                                                               |
+| `LOKI_URL`                    | `string`  | `""`    | Loki server address and port.                                                   |
+| `LOKI_USERNAME`               | `string`  | `""`    | basic auth username for Loki (optional).                                        |
+| `LOKI_PASSWORD`               | `string`  | `""`    | basic auth password for Loki (optional).                                        |
+| `LOKI_TENANT_ID`              | `string`  | `""`    | Tenant id sent in the `X-Scope-OrgID` header (optional).                        |
+| `LOKI_PUSH_SECONDS`           | `int`     | `5`     | Maximum wait time in seconds before pushing the batch to Loki.                  |
+| `LOKI_PUSH_LINES`             | `int`     | `1000`  | Maximum number of log entries (lines) before pushing the batch in one request.  |
+| `LOKI_BUFFER_LINES`           | `int`     | `10000` | Buffer size in entries before they are dropped (memory protection).             |
+
+By default, metrics collection is disabled if the `LOKI_URL` variable is empty.
+
+- Import the prepared Loki log dashboard into Grafana from [json](https://raw.githubusercontent.com/Lifailon/logporter/refs/heads/main/grafana/dashboards/logs.json) file.
+
+![](/img/loki.jpg)
 
 ## List of metrics
 
@@ -124,6 +132,15 @@ scrape_configs:
 | docker_io_read_bytes               | `counter`   | Number of bytes read by the block device                                                            |
 | docker_io_write_bytes              | `counter`   | Number of bytes write by the block device                                                           |
 | docker_process_pids_count          | `gauge`     | Number of running processes and threads                                                             |
-| docker_logs_stdout_count           | `counter`   | Number of messages in logs from standard output                                                     |
-| docker_logs_stderr_count           | `counter`   | Number of messages in logs from error output                                                        |
 | docker_started_time                | `gauge`     | Container started time                                                                              |
+
+List of available labels for filtering:
+
+| Label             | Description                                                                                         |
+| -                 | -                                                                                                   |
+| `hostname`        | Hostname obtained from the Docker API or custom from the `DOCKER_METRICS_HOSTNAME` variable.        |
+| `containerId`     | Unique container identifier.                                                                        |
+| `containerName`   | Container name from `container_name` in compose file.                                               |
+| `composeProject`  | Name of the compose project (usually the name of the directory where the compose file is located).  |
+| `composeService`  | Name of the service in the compose project (may differ from `containerName`).                       |
+| `composeWorkDir`  | Path to the directory with the compose stack on the host.                                           |
