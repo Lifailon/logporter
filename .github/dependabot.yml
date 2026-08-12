@@ -1,0 +1,13 @@
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
+    labels:
+      - "dependencies"
