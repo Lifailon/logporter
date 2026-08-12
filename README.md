@@ -3,7 +3,7 @@
 [![Docker Hub Pulls](https://img.shields.io/docker/pulls/lifailon/logporter?label=Docker+Hub+Pulls&logo=docker)](https://hub.docker.com/r/lifailon/logporter) \
 [![Docker Image Size](https://img.shields.io/docker/image-size/lifailon/logporter?label=Docker+Image+Size&logo=docker)](https://hub.docker.com/r/lifailon/logporter/tags)
 
-A lightweight alternative to [cAdvisor](https://github.com/google/cadvisor) for exporting metrics from Docker containers and log collector for sending to Loki.
+A lightweight alternative to [cAdvisor](https://github.com/google/cadvisor) for exporting metrics from Docker containers and a log collector for sending to Loki, with support for filtering by compose labels.
 
 ## Performance
 
