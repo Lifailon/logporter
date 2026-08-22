@@ -81,10 +81,38 @@ func main() {
 		}
 	}
 
+	// Background worker for check image update
+	exporter.GetImageUpdateMetrics = true
+	getImageUpdateMetrics := os.Getenv("DOCKER_METRICS_IMAGE_UPDATE")
+	envImageUpdateMetrics := strings.ToLower(getImageUpdateMetrics)
+	if envImageUpdateMetrics == "false" {
+		exporter.GetImageUpdateMetrics = false
+	}
+	if exporter.GetImageUpdateMetrics {
+		exporter.ImageInterval = 30 * time.Minute
+		envInterval := os.Getenv("DOCKER_METRICS_IMAGE_INTERVAL")
+		if envInterval != "" {
+			parsed, err := strconv.Atoi(envInterval)
+			if err == nil && parsed > 0 {
+				exporter.ImageInterval = time.Duration(parsed) * time.Minute
+			}
+		}
+		go func() {
+			logger.Info("image update check started", "source", "background worker", "interval", exporter.ImageInterval)
+			exporter.ImageMetricsWorker(dockerClient, logger)
+			ticker := time.NewTicker(exporter.ImageInterval)
+			defer ticker.Stop()
+			for range ticker.C {
+				exporter.ImageMetricsWorker(dockerClient, logger)
+			}
+		}()
+	}
+
 	// #12 Background worker for get metrics from volumes
 	exporter.GetVolumeMetrics = true
 	getVolumeMetrics := os.Getenv("DOCKER_METRICS_VOLUME")
-	if strings.ToLower(getVolumeMetrics) == "false" {
+	envVolumeMetrics := strings.ToLower(getVolumeMetrics)
+	if envVolumeMetrics == "false" {
 		exporter.GetVolumeMetrics = false
 	}
 	if exporter.GetVolumeMetrics {
@@ -97,11 +125,12 @@ func main() {
 			}
 		}
 		go func() {
-			exporter.UpdateVolumesMetrics(dockerClient, logger)
+			logger.Info("volume metrics collection started", "source", "background worker", "cache", exporter.VolumeCache)
+			exporter.VolumesMetricsWorker(dockerClient, logger)
 			ticker := time.NewTicker(exporter.VolumeCache)
 			defer ticker.Stop()
 			for range ticker.C {
-				exporter.UpdateVolumesMetrics(dockerClient, logger)
+				exporter.VolumesMetricsWorker(dockerClient, logger)
 			}
 		}()
 	}

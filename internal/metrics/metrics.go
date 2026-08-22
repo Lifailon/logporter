@@ -11,26 +11,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
 )
 
 type Metrics struct {
-	ID               []string
-	info             map[string]*Info
-	baseMetrics      map[string]*BaseMetrics
-	inspectMetrics   map[string]float64
-	imageMetrics     []imageMetric
-	volumeMetrics    []volumeMetric
-	CacheData        []string
-	CacheTime        time.Time
-	CacheTTL         time.Duration
-	CacheMutex       sync.RWMutex
-	CacheValid       bool
-	GetVolumeMetrics bool
-	VolumeCache      time.Duration
+	ID                    []string
+	info                  map[string]*Info
+	baseMetrics           map[string]*BaseMetrics
+	inspectMetrics        map[string]float64
+	imageMetrics          []imageMetric
+	imageUpdateMetrics    []imageUpdateMetrics
+	volumeMetrics         []volumeMetric
+	CacheData             []string
+	CacheTime             time.Time
+	CacheTTL              time.Duration
+	CacheMutex            sync.RWMutex
+	CacheValid            bool
+	GetImageUpdateMetrics bool
+	GetVolumeMetrics      bool
+	VolumeCache           time.Duration
+	ImageInterval         time.Duration
 }
 
 type Info struct {
@@ -62,18 +63,6 @@ type BaseMetrics struct {
 type InspectMetric struct {
 	id        string
 	timestamp float64
-}
-
-type imageMetric struct {
-	tag  string
-	size int
-}
-
-type volumeMetric struct {
-	name   string
-	driver string
-	size   int64
-	usage  int64
 }
 
 // Get information about all containers (second param to get all or only started containers)
@@ -266,75 +255,6 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	results <- &data
 }
 
-// Get list of images and their sizes
-func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, error) {
-	var imageMetrics []imageMetric
-	imageOptions := image.ListOptions{SharedSize: true}
-	images, err := dockerClient.ImageList(context.Background(), imageOptions)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting image list: %v", err)
-	}
-	for _, image := range images {
-		tag := "none"
-		if len(image.RepoTags) > 0 {
-			tag = image.RepoTags[0]
-		}
-		size := int(image.Size)
-		sharedSize := int(image.SharedSize)
-		if sharedSize > 0 {
-			size = size - sharedSize
-		}
-		data := imageMetric{
-			tag:  tag,
-			size: size,
-		}
-		imageMetrics = append(imageMetrics, data)
-	}
-	return imageMetrics, nil
-}
-
-// Get list of volumes and their sizes
-func (m *Metrics) getVolumesMetrics(dockerClient *client.Client) ([]volumeMetric, error) {
-	diskOptions := types.DiskUsageOptions{}
-	diskUsage, err := dockerClient.DiskUsage(context.Background(), diskOptions)
-	if err != nil {
-		return nil, fmt.Errorf("Error getting volume list: %v", err)
-	}
-	// Allocating memory for a slice
-	volumeMetrics := make([]volumeMetric, 0, len(diskUsage.Volumes))
-	for _, volume := range diskUsage.Volumes {
-		var size int64
-		var usage int64
-		// Protection from nil
-		if volume.UsageData != nil {
-			size = volume.UsageData.Size
-			usage = volume.UsageData.RefCount
-		}
-		volumeMetrics = append(volumeMetrics, volumeMetric{
-			name:   volume.Name,
-			driver: volume.Driver,
-			size:   size,
-			usage:  usage,
-		})
-	}
-	return volumeMetrics, nil
-}
-
-func (m *Metrics) UpdateVolumesMetrics(dockerClient *client.Client, logger *slog.Logger) {
-	start := time.Now()
-	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
-	if err != nil {
-		logger.Error("failed to get volume list", "error", err)
-	}
-	m.volumeMetrics = volumeMetrics
-	volumeCount := len(m.volumeMetrics)
-	logger.Info("collecting volume metrics",
-		"source", "background worker",
-		"volumes", volumeCount,
-		"duration", time.Since(start).Round(time.Millisecond),
-	)
-}
-
 // Main function for getting metrics
 func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
 	// Get a list of containers with status information and all container ID array
@@ -397,17 +317,46 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	data = append(data, "# HELP docker_image_size The size of the image minus the layer shared by other images")
 	data = append(data, "# TYPE docker_image_size gauge")
 	for _, img := range m.imageMetrics {
-		metricText := fmt.Sprintf("docker_image_size{imageTag=\"%s\",hostname=\"%s\"} %v", img.tag, hostname, img.size)
+		metricText := fmt.Sprintf("docker_image_size{imageTag=\"%s\",currentDigest=\"%s\",hostname=\"%s\"} %v",
+			img.tag,
+			img.sha,
+			hostname,
+			img.size,
+		)
 		data = append(data, metricText)
 	}
 	data = append(data, "")
+
+	// Fill in the image update status
+	if m.GetImageUpdateMetrics {
+		data = append(data, "# HELP docker_image_update Image update status")
+		data = append(data, "# TYPE docker_image_update gauge")
+		for _, img := range m.imageUpdateMetrics {
+			metricText := fmt.Sprintf(
+				"docker_image_update{imageTag=\"%s\",currentDigest=\"%s\",remoteDigest=\"%s\",hostname=\"%s\"} %v",
+				img.tag,
+				img.currentDigest,
+				img.remoteDigest,
+				hostname,
+				img.update,
+			)
+			data = append(data, metricText)
+		}
+		data = append(data, "")
+	}
 
 	// #12 Fill in the volume metrics
 	if m.GetVolumeMetrics {
 		data = append(data, "# HELP docker_volume_size The size of the volumes and the number of containers associated with it in the volumeUsage tag")
 		data = append(data, "# TYPE docker_volume_size gauge")
 		for _, vol := range m.volumeMetrics {
-			metricText := fmt.Sprintf("docker_volume_size{volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\",hostname=\"%s\"} %v", vol.name, vol.driver, vol.usage, hostname, vol.size)
+			metricText := fmt.Sprintf("docker_volume_size{volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\",hostname=\"%s\"} %v",
+				vol.name,
+				vol.driver,
+				vol.usage,
+				hostname,
+				vol.size,
+			)
 			data = append(data, metricText)
 		}
 		data = append(data, "")
@@ -445,7 +394,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	return data
 }
 
-// Get hostname from Docker Info method
+// Get hostname from Docker Info or OS
 func (m *Metrics) GetHostname(dockerClient *client.Client) string {
 	info, err := dockerClient.Info(context.Background())
 	if err == nil {
