@@ -20,14 +20,16 @@ import (
 func loggingMiddleware(m *metrics.Metrics, next http.Handler, logger *slog.Logger) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		logger.Info("request received",
+		logger.Info(
+			"request received",
 			"source", r.RemoteAddr,
 			"method", r.Method,
 			"path", r.URL.Path,
 		)
 		next.ServeHTTP(w, r)
 		containersCount := len(m.ID)
-		logger.Info("response sent",
+		logger.Info(
+			"response sent",
 			"source", r.RemoteAddr,
 			"cache", m.CacheValid,
 			"containers", containersCount,
@@ -98,7 +100,11 @@ func main() {
 			}
 		}
 		go func() {
-			logger.Info("image update check started", "source", "background worker", "interval", exporter.ImageInterval)
+			logger.Info(
+				"image update check started",
+				"source", "background worker",
+				"interval", exporter.ImageInterval,
+			)
 			exporter.ImageMetricsWorker(dockerClient, logger)
 			ticker := time.NewTicker(exporter.ImageInterval)
 			defer ticker.Stop()
@@ -125,7 +131,11 @@ func main() {
 			}
 		}
 		go func() {
-			logger.Info("volume metrics collection started", "source", "background worker", "cache", exporter.VolumeCache)
+			logger.Info(
+				"volume metrics collection started", "source",
+				"background worker",
+				"cache", exporter.VolumeCache,
+			)
 			exporter.VolumesMetricsWorker(dockerClient, logger)
 			ticker := time.NewTicker(exporter.VolumeCache)
 			defer ticker.Stop()
