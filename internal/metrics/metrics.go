@@ -316,12 +316,14 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	// Fill in the image metrics
 	data = append(data, "# HELP docker_image_size The size of the image minus the layer shared by other images")
 	data = append(data, "# TYPE docker_image_size gauge")
-	for _, img := range m.imageMetrics {
-		metricText := fmt.Sprintf("docker_image_size{imageTag=\"%s\",currentDigest=\"%s\",hostname=\"%s\"} %v",
-			img.tag,
-			img.sha,
+	for _, image := range m.imageMetrics {
+		metricText := fmt.Sprintf("docker_image_size{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",hostname=\"%s\"} %v",
+			image.imageName,
+			image.tag,
+			image.registry,
+			image.digest,
 			hostname,
-			img.size,
+			image.size,
 		)
 		data = append(data, metricText)
 	}
@@ -329,16 +331,18 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 
 	// Fill in the image update status
 	if m.GetImageUpdateMetrics {
-		data = append(data, "# HELP docker_image_update Image update status")
+		data = append(data, "# HELP docker_image_update Image update status based on digests: update required (1) or current version (0)")
 		data = append(data, "# TYPE docker_image_update gauge")
-		for _, img := range m.imageUpdateMetrics {
+		for _, image := range m.imageUpdateMetrics {
 			metricText := fmt.Sprintf(
-				"docker_image_update{imageTag=\"%s\",currentDigest=\"%s\",remoteDigest=\"%s\",hostname=\"%s\"} %v",
-				img.tag,
-				img.currentDigest,
-				img.remoteDigest,
+				"docker_image_update{imageName=\"%s\",tag=\"%s\",registry=\"%s\",currentDigest=\"%s\",remoteDigest=\"%s\",hostname=\"%s\"} %v",
+				image.imageName,
+				image.tag,
+				image.registry,
+				image.currentDigest,
+				image.remoteDigest,
 				hostname,
-				img.update,
+				image.updateStatus,
 			)
 			data = append(data, metricText)
 		}
