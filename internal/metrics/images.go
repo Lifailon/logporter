@@ -10,6 +10,8 @@ import (
 
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+
+	"logporter/internal/updates"
 )
 
 type imageMetric struct {
@@ -91,36 +93,6 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 	return imageMetrics, nil
 }
 
-func (m *Metrics) checkImageUpdate(dockerClient *client.Client, image imageMetric) (imageUpdateMetrics, error) {
-	imageStatus := imageUpdateMetrics{}
-	imageInspect, err := dockerClient.DistributionInspect(
-		context.Background(),
-		image.imageFullName,
-		"",
-	)
-	if err != nil {
-		return imageStatus, err
-	}
-	remoteDigest := imageInspect.Descriptor.Digest.String()
-	shaIndex := strings.Index(remoteDigest, "sha256:")
-	if shaIndex != -1 {
-		remoteDigest = remoteDigest[shaIndex+7:]
-	}
-	imageStatus = imageUpdateMetrics{
-		imageFullName: image.imageFullName,
-		imageName:     image.imageName,
-		tag:           image.tag,
-		registry:      image.registry,
-		currentDigest: image.digest,
-		remoteDigest:  remoteDigest,
-		updateStatus:  0,
-	}
-	if !strings.Contains(image.digest, remoteDigest) {
-		imageStatus.updateStatus = 1
-	}
-	return imageStatus, nil
-}
-
 func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *slog.Logger) []imageUpdateMetrics {
 	if len(m.imageMetrics) > 0 {
 		metrics := make([]imageUpdateMetrics, 0, len(m.imageMetrics))
@@ -131,12 +103,21 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 			go func(image imageMetric) {
 				defer wg.Done()
 				if image.imageFullName != "none" {
-					status, err := m.checkImageUpdate(dockerClient, image)
+					updateStatus, remoteDigest, err := updates.CheckImageUpdateDigest(dockerClient, image.imageFullName, image.digest)
 					if err != nil {
 						logger.Error("failed to inspect image distribution", "image", image.tag, "error", err)
 					} else {
 						mu.Lock()
-						metrics = append(metrics, status)
+						updateMetrics := imageUpdateMetrics{
+							imageFullName: image.imageFullName,
+							imageName:     image.imageName,
+							tag:           image.tag,
+							registry:      image.registry,
+							currentDigest: image.digest,
+							remoteDigest:  remoteDigest,
+							updateStatus:  updateStatus,
+						}
+						metrics = append(metrics, updateMetrics)
 						mu.Unlock()
 					}
 				}
