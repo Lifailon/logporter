@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -17,19 +16,16 @@ type volumeMetric struct {
 	usage  int64
 }
 
-// Get list of volumes and their sizes
 func (m *Metrics) getVolumesMetrics(dockerClient *client.Client) ([]volumeMetric, error) {
 	diskOptions := types.DiskUsageOptions{}
 	diskUsage, err := dockerClient.DiskUsage(context.Background(), diskOptions)
 	if err != nil {
-		return nil, fmt.Errorf("error getting volume list: %v", err)
+		return nil, err
 	}
-	// Allocating memory for a slice
 	volumeMetrics := make([]volumeMetric, 0, len(diskUsage.Volumes))
 	for _, volume := range diskUsage.Volumes {
 		var size int64
 		var usage int64
-		// Protection from nil
 		if volume.UsageData != nil {
 			size = volume.UsageData.Size
 			usage = volume.UsageData.RefCount
@@ -48,7 +44,7 @@ func (m *Metrics) VolumesMetricsWorker(dockerClient *client.Client, logger *slog
 	start := time.Now()
 	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
 	if err != nil {
-		logger.Error("failed to get volume list", "error", err)
+		logger.Error("error getting volume list", "error", err)
 	}
 	m.volumeMetrics = volumeMetrics
 	volumeCount := len(m.volumeMetrics)

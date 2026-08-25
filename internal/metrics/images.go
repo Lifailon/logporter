@@ -15,21 +15,20 @@ import (
 )
 
 type imageMetric struct {
-	imageFullName string
-	imageName     string
-	tag           string
-	registry      string
-	digest        string
-	size          int
+	fullName string
+	name     string
+	tag      string
+	registry string
+	digest   string
+	size     int
 }
 
 type imageUpdateMetrics struct {
-	imageFullName string
-	imageName     string
+	name          string
 	tag           string
 	registry      string
-	currentDigest string
-	remoteDigest  string
+	digest        string
+	remoteVersion string
 	updateStatus  int
 }
 
@@ -46,7 +45,7 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 			imageFullName = image.RepoTags[0]
 		}
 		imageName := imageFullName
-		imageTag := "none"
+		imageTag := "latest"
 		splitTag := strings.Split(imageFullName, ":")
 		if len(splitTag) > 1 {
 			imageName = strings.Join(splitTag[:len(splitTag)-1], ":")
@@ -81,12 +80,12 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 			size = size - sharedSize
 		}
 		data := imageMetric{
-			imageFullName: imageFullName,
-			imageName:     imageName,
-			tag:           imageTag,
-			registry:      registry,
-			digest:        repoDigest,
-			size:          size,
+			fullName: imageFullName,
+			name:     imageName,
+			tag:      imageTag,
+			registry: registry,
+			digest:   repoDigest,
+			size:     size,
 		}
 		imageMetrics = append(imageMetrics, data)
 	}
@@ -102,24 +101,39 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 		for _, image := range m.imageMetrics {
 			go func(image imageMetric) {
 				defer wg.Done()
-				if image.imageFullName != "none" {
-					updateStatus, remoteDigest, err := updates.CheckImageUpdateDigest(dockerClient, image.imageFullName, image.digest)
+				if image.fullName != "none" {
+					// 1. Check tag on semantic version
+					updateStatus, remoteDigest, err := updates.CheckImageUpdateSemantic(image.fullName, logger)
 					if err != nil {
-						logger.Error("failed to inspect image distribution", "image", image.tag, "error", err)
-					} else {
-						mu.Lock()
-						updateMetrics := imageUpdateMetrics{
-							imageFullName: image.imageFullName,
-							imageName:     image.imageName,
-							tag:           image.tag,
-							registry:      image.registry,
-							currentDigest: image.digest,
-							remoteDigest:  remoteDigest,
-							updateStatus:  updateStatus,
+						logger.Debug(
+							"error getting semantic version",
+							"image", image.name,
+							"tag", image.tag,
+							"error", err,
+						)
+						// 2. Check tag on digest sha
+						updateStatus, remoteDigest, err = updates.CheckImageUpdateDigest(dockerClient, image.fullName, image.digest, logger)
+						if err != nil {
+							logger.Error(
+								"error inspect distribution",
+								"image", image.name,
+								"tag", image.tag,
+								"error", err,
+							)
+							return
 						}
-						metrics = append(metrics, updateMetrics)
-						mu.Unlock()
 					}
+					mu.Lock()
+					updateMetrics := imageUpdateMetrics{
+						name:          image.name,
+						tag:           image.tag,
+						registry:      image.registry,
+						digest:        image.digest,
+						remoteVersion: remoteDigest,
+						updateStatus:  updateStatus,
+					}
+					metrics = append(metrics, updateMetrics)
+					mu.Unlock()
 				}
 			}(image)
 		}

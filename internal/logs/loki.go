@@ -98,7 +98,8 @@ func (l *LokiClient) Send(key string, labels map[string]string, timestamp int64,
 	case <-l.done:
 	default:
 		if l.dropped.Add(1)%1000 == 1 {
-			l.logger.Warn("loki send buffer is full, records are being discarded",
+			l.logger.Warn(
+				"loki send buffer is full, records are being discarded",
 				"dropped", l.dropped.Load(),
 			)
 		}

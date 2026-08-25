@@ -318,7 +318,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	data = append(data, "# TYPE docker_image_size gauge")
 	for _, image := range m.imageMetrics {
 		metricText := fmt.Sprintf("docker_image_size{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",hostname=\"%s\"} %v",
-			image.imageName,
+			image.name,
 			image.tag,
 			image.registry,
 			image.digest,
@@ -335,12 +335,12 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 		data = append(data, "# TYPE docker_image_update gauge")
 		for _, image := range m.imageUpdateMetrics {
 			metricText := fmt.Sprintf(
-				"docker_image_update{imageName=\"%s\",tag=\"%s\",registry=\"%s\",currentDigest=\"%s\",remoteDigest=\"%s\",hostname=\"%s\"} %v",
-				image.imageName,
+				"docker_image_update{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",remoteVersion=\"%s\",hostname=\"%s\"} %v",
+				image.name,
 				image.tag,
 				image.registry,
-				image.currentDigest,
-				image.remoteDigest,
+				image.digest,
+				image.remoteVersion,
 				hostname,
 				image.updateStatus,
 			)
