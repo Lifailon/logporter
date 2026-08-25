@@ -14,7 +14,7 @@ on:
       Interval:
         description: 'Interval between cycles'
         type: string
-        default: '5'
+        default: '15'
       Publish:
         description: "Publish image to Docker Hub"
         default: false
@@ -64,6 +64,7 @@ jobs:
             -v /var/run/docker.sock:/var/run/docker.sock \
             -p 9333:9333 \
             --restart=always \
+            -e "LOG_LEVEL=debug" \
             lifailon/logporter:latest
 
       - name: Run prometheus compose service
@@ -84,8 +85,12 @@ jobs:
             sleep $SLEEP_INTERVAL
           done
           curl -sS localhost:9333/metrics
+
+      - name: Get docker logs and clean
+        if: ${{ github.event.inputs.Check == 'true' }}
+        run: |
           docker logs logporter
-          docker stop logporter && docker rm logporter
+          docker stop logporter && docker rm logporter && docker compose down
 
       - name: Login to Docker Hub
         if: ${{ github.event.inputs.Publish == 'true' }}
