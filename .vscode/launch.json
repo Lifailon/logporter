@@ -8,7 +8,16 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main.go",
             "env": {
-                "DOCKER_HOST": "tcp://127.0.0.1:2375"
+                "DOCKER_HOST": "tcp://127.0.0.1:2375",
+                "LOG_LEVEL": "debug",
+                "DOCKER_METRICS_HOSTNAME": "vscode",
+                // "DOCKER_METRICS_PORT": "9333",
+                // "DOCKER_METRICS_CACHE": "5",
+                // "DOCKER_METRICS_VOLUME": "false",
+                // "DOCKER_METRICS_VOLUME_CACHE": "1",
+                // "DOCKER_METRICS_IMAGE_UPDATE": "false",
+                // "DOCKER_METRICS_IMAGE_INTERVAL": "1",
+                // "LOKI_URL": "http://192.168.3.101:3100"
             },
             "preLaunchTask": "Start ssh tunnel to remote docker socket",
             "postDebugTask": "Stop ssh tunnel"

@@ -2,6 +2,7 @@ package updates
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 
 	"github.com/docker/docker/client"
@@ -11,6 +12,7 @@ func CheckImageUpdateDigest(
 	dockerClient *client.Client,
 	imageFullName string,
 	currentDigest string,
+	logger *slog.Logger,
 ) (
 	updateStatus int,
 	remoteDigest string,
@@ -33,5 +35,12 @@ func CheckImageUpdateDigest(
 	if !strings.Contains(currentDigest, digest) {
 		status = 1
 	}
+	logger.Debug(
+		"image digest detected",
+		"image", imageFullName,
+		"status", status,
+		"currentDigest", currentDigest,
+		"remoteDigest", digest,
+	)
 	return status, digest, nil
 }

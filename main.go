@@ -38,13 +38,34 @@ func loggingMiddleware(m *metrics.Metrics, next http.Handler, logger *slog.Logge
 	})
 }
 
+// Determining logging level
+func logLevelParse(level string) slog.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return slog.LevelDebug
+	case "info":
+		return slog.LevelInfo
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "err", "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
 func main() {
+	// Get environment variables
+	envLogLevel := os.Getenv("LOG_LEVEL")
+	logLevel := logLevelParse(strings.ToLower(envLogLevel))
+
 	// Custom logger
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
 
 	// Initialize the main structure
 	var exporter *metrics.Metrics = &metrics.Metrics{}
-	var err error
 
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -57,7 +78,6 @@ func main() {
 	var hostname string
 	var port string
 
-	// Get environment variables
 	port = "9333"
 	envPort := os.Getenv("DOCKER_METRICS_PORT")
 	if envPort != "" {
@@ -132,8 +152,8 @@ func main() {
 		}
 		go func() {
 			logger.Info(
-				"volume metrics collection started", "source",
-				"background worker",
+				"volume metrics collection started",
+				"source", "background worker",
 				"cache", exporter.VolumeCache,
 			)
 			exporter.VolumesMetricsWorker(dockerClient, logger)
