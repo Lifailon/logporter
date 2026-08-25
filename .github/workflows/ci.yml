@@ -5,20 +5,28 @@ on:
     inputs:
       Check:
         description: "Run container and check metrics"
-        default: false
+        default: true
         type: boolean
+      Count:
+        description: 'Number of verification cycles'
+        type: string
+        default: '5'
+      Interval:
+        description: 'Interval between cycles'
+        type: string
+        default: '5'
       Publish:
         description: "Publish image to Docker Hub"
         default: false
         type: boolean
       Latest:
         description: "Update latest tag"
-        default: true
+        default: false
         type: boolean
       Tag:
-        description: "Additional tag for image"
+        description: "Add custom tag for image"
         required: false
-        default: "1.1.0"
+        default: "nightly"
 
 jobs:
   build:
@@ -36,15 +44,7 @@ jobs:
           docker buildx build \
             -t lifailon/logporter:latest \
             --load .
-
-      - name: Run logporter container
-        if: ${{ github.event.inputs.Check == 'true' }}
-        run: |
-          docker run -d --name logporter \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -p 9333:9333 \
-            --restart=always \
-            lifailon/logporter:latest
+          docker image ls
 
       - name: Install Docker Compose
         if: ${{ github.event.inputs.Check == 'true' }}
@@ -57,7 +57,16 @@ jobs:
           cp /usr/local/bin/docker-compose $HOME/.docker/cli-plugins/docker-compose
           docker compose version
 
-      - name: Run prometheus in compose service
+      - name: Run logporter container
+        if: ${{ github.event.inputs.Check == 'true' }}
+        run: |
+          docker run -d --name logporter \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -p 9333:9333 \
+            --restart=always \
+            lifailon/logporter:latest
+
+      - name: Run prometheus compose service
         if: ${{ github.event.inputs.Check == 'true' }}
         run: |
           sed -i "s|logporter:9333|localhost:9333|" prometheus/prometheus.yml
@@ -65,12 +74,16 @@ jobs:
 
       - name: Check metrics
         if: ${{ github.event.inputs.Check == 'true' }}
+        env:
+          LOOP_COUNT: ${{ github.event.inputs.Check }}
+          SLEEP_INTERVAL: ${{ github.event.inputs.Interval }}
         run: |
           curl -sS localhost:9333/metrics
-          for i in {1..5}; do
+          for i in $(seq 1 $LOOP_COUNT); do
             curl -sS localhost:9333/metrics | grep 'containerName="logporter"' | grep docker_cpu_usage_total
-            sleep 5
+            sleep $SLEEP_INTERVAL
           done
+          curl -sS localhost:9333/metrics
           docker logs logporter
           docker stop logporter && docker rm logporter
 
