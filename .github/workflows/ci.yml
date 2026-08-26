@@ -6,6 +6,14 @@ on:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
+      Test:
+        description: "Go unit test"
+        default: true
+        type: boolean
+      Lint:
+        description: "Golangci lint check"
+        default: true
+        type: boolean
       Check:
         description: "Run container and check metrics"
         default: true
@@ -18,10 +26,6 @@ on:
         description: 'Interval between cycles'
         type: string
         default: '15'
-      Lint:
-        description: "Golangci lint check"
-        default: true
-        type: boolean
       Publish:
         description: "Publish image to Docker Hub"
         default: false
@@ -56,21 +60,21 @@ jobs:
           go vet ./...
           go build ./...
 
+      - name: Go unit test
+        if: ${{ github.event.inputs.Test == 'true' }}
+        run: go test -json ./... > test.json
+
+      - name: Publish test report to GitHub Summary
+        if: ${{ github.event.inputs.Test == 'true' }}
+        run: |
+          go install github.com/mfridman/tparse@latest
+          tparse -all -format=markdown -file test.json >> $GITHUB_STEP_SUMMARY
+
       - name: Golangci lint check
         if: ${{ github.event.inputs.Lint == 'true' }}
         uses: golangci/golangci-lint-action@v9
         with:
           version: latest
-
-      - name: Install Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build image
-        run: |
-          docker buildx build \
-            -t lifailon/logporter:latest \
-            --load .
-          docker image ls
 
       - name: Install Docker Compose
         if: ${{ github.event.inputs.Check == 'true' }}
@@ -83,6 +87,22 @@ jobs:
           cp /usr/local/bin/docker-compose $HOME/.docker/cli-plugins/docker-compose
           docker compose version
 
+      - name: Run prometheus compose service
+        if: ${{ github.event.inputs.Check == 'true' }}
+        run: |
+          sed -i "s|logporter:9333|localhost:9333|" prometheus/prometheus.yml
+          docker compose up -d prometheus
+
+      - name: Install Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build image
+        run: |
+          docker buildx build \
+            -t lifailon/logporter:latest \
+            --load .
+          docker image ls
+
       - name: Run logporter container
         if: ${{ github.event.inputs.Check == 'true' }}
         run: |
@@ -92,12 +112,6 @@ jobs:
             --restart=always \
             -e "LOG_LEVEL=debug" \
             lifailon/logporter:latest
-
-      - name: Run prometheus compose service
-        if: ${{ github.event.inputs.Check == 'true' }}
-        run: |
-          sed -i "s|logporter:9333|localhost:9333|" prometheus/prometheus.yml
-          docker compose up -d prometheus
 
       - name: Check metrics
         if: ${{ github.event.inputs.Check == 'true' }}
