@@ -197,7 +197,7 @@ func (l *LokiClient) push(streams []lokiPushStream) error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
 		data, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
 		return fmt.Errorf("invalid status %d: %s", response.StatusCode, strings.TrimSpace(string(data)))

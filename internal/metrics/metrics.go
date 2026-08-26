@@ -104,7 +104,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 		logger.Error("failed to get container stats", "error", err)
 		return nil
 	}
-	defer stats.Body.Close()
+	defer func() { _ = stats.Body.Close() }()
 
 	// Read statistics
 	jsonStats, err := io.ReadAll(stats.Body)
@@ -123,7 +123,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 
 	}
 	// Extract data and fill structure
-	var bm BaseMetrics = BaseMetrics{}
+	bm := BaseMetrics{}
 
 	bm.id = id
 

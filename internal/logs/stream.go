@@ -160,8 +160,8 @@ func streamGetLogs(ctx context.Context, dockerClient *client.Client, loki *LokiC
 		}
 
 		gotData, readErr := streamParseLogs(logs, stdoutKey, stdoutLabels, stderrKey, stderrLabels, loki, &lastTimestamp)
-		logs.Close()
-		if readErr != nil && ctx.Err() == nil {
+		_ = logs.Close()
+		if ctx.Err() == nil {
 			logger.Error("log stream has stopped", "container", info.Name, "error", readErr)
 		}
 		if ctx.Err() != nil || (!gotData && !containerRunning(ctx, dockerClient, id)) {

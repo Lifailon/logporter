@@ -65,7 +65,7 @@ func main() {
 	}))
 
 	// Initialize the main structure
-	var exporter *metrics.Metrics = &metrics.Metrics{}
+	exporter := &metrics.Metrics{}
 
 	// Create client with connection parameters from environment variables and approval of the API version with the Docker Daemon
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -73,7 +73,7 @@ func main() {
 		logger.Error("failed to create Docker client", "error", err)
 		os.Exit(1)
 	}
-	defer dockerClient.Close()
+	defer func() { _ = dockerClient.Close() }()
 
 	var hostname string
 	var port string
@@ -202,7 +202,7 @@ func main() {
 
 		// Output metrics in Prometheus format
 		for _, m := range metricsData {
-			fmt.Fprintln(w, m)
+			_, _ = fmt.Fprintln(w, m)
 		}
 	})
 
