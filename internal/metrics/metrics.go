@@ -19,7 +19,7 @@ type Metrics struct {
 	ID                    []string
 	info                  map[string]*Info
 	baseMetrics           map[string]*BaseMetrics
-	inspectMetrics        map[string]float64
+	inspectMetrics        map[string]*InspectMetric
 	imageMetrics          []imageMetric
 	imageUpdateMetrics    []imageUpdateMetrics
 	volumeMetrics         []volumeMetric
@@ -61,8 +61,17 @@ type BaseMetrics struct {
 }
 
 type InspectMetric struct {
-	id        string
-	timestamp float64
+	id               string
+	startedTimestamp float64
+	status           string
+	exitCode         int
+	oomKilled        int
+	healthy          int
+}
+
+type CustomLabels struct {
+	key   string
+	value string
 }
 
 // Get information about all containers (second param to get all or only started containers)
@@ -233,13 +242,13 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 // Get metrics from inspect method
 func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric, logger *slog.Logger) {
 	defer wg.Done()
-	inspect, err := dockerClient.ContainerInspect(context.Background(), id)
+	inspectData, err := dockerClient.ContainerInspect(context.Background(), id)
 	if err != nil {
 		logger.Error("failed to inspect container", "error", err)
 		return
 	}
 	// Get started time
-	StartedAt := inspect.State.StartedAt
+	StartedAt := inspectData.State.StartedAt
 	// Converting string to time type
 	startedTime, err := time.Parse(time.RFC3339Nano, StartedAt)
 	if err != nil {
@@ -248,9 +257,29 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 	}
 	// Converting to timestamp
 	startedTimestamp := float64(startedTime.Unix())
+	// Get state metrics
+	status := inspectData.ContainerJSONBase.State.Status
+	exitCode := inspectData.ContainerJSONBase.State.ExitCode
+	oomKilled := 0
+	stateOOM := inspectData.ContainerJSONBase.State.OOMKilled
+	if stateOOM {
+		oomKilled = 1
+	}
+	healthy := 2
+	stateHealth := inspectData.ContainerJSONBase.State.Health
+	if stateHealth != nil {
+		healthy = 0
+		if inspectData.State.Health.Status == "healthy" {
+			healthy = 1
+		}
+	}
 	data := InspectMetric{
-		id:        id,
-		timestamp: startedTimestamp,
+		id:               id,
+		startedTimestamp: startedTimestamp,
+		status:           status,
+		exitCode:         exitCode,
+		oomKilled:        oomKilled,
+		healthy:          healthy,
 	}
 	results <- &data
 }
@@ -265,7 +294,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	wg.Add(len(m.ID))
 	results := make(chan *BaseMetrics, len(m.ID))
 
-	// Get base metrics
+	// Get base metrics for running containers
 	for _, id := range m.ID {
 		go func(containerID string) {
 			defer wg.Done()
@@ -281,26 +310,34 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	m.baseMetrics = make(map[string]*BaseMetrics, len(results))
 
 	// Fill the map with values
-	for r := range results {
-		if r != nil {
-			m.baseMetrics[r.id] = r
+	for res := range results {
+		if res != nil {
+			m.baseMetrics[res.id] = res
 		}
 	}
 
-	// Get start time containers from inspect
-	wg.Add(len(m.ID))
-	inspectData := make(chan *InspectMetric, len(m.ID))
+	// Get metrics from inspect for all containers
+	allID := make([]string, 0, len(m.info))
+	for id := range m.info {
+		allID = append(allID, id)
+	}
 
-	for _, id := range m.ID {
+	wg.Add(len(allID))
+	inspectData := make(chan *InspectMetric, len(allID))
+
+	for _, id := range allID {
 		go m.getInspect(dockerClient, id, &wg, inspectData, logger)
 	}
 
 	wg.Wait()
 	close(inspectData)
 
-	m.inspectMetrics = map[string]float64{}
+	m.inspectMetrics = make(map[string]*InspectMetric, len(inspectData))
+
 	for data := range inspectData {
-		m.inspectMetrics[data.id] = data.timestamp
+		if data != nil {
+			m.inspectMetrics[data.id] = data
+		}
 	}
 
 	// Get metrics in Prometheus format
@@ -331,7 +368,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 
 	// Fill in the image update status
 	if m.GetImageUpdateMetrics {
-		data = append(data, "# HELP docker_image_update Image update status based on digests: update required (1) or current version (0)")
+		data = append(data, "# HELP docker_image_update Image update status based on digests: update required (1) or latest version (0)")
 		data = append(data, "# TYPE docker_image_update gauge")
 		for _, image := range m.imageUpdateMetrics {
 			metricText := fmt.Sprintf(
@@ -353,46 +390,27 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	if m.GetVolumeMetrics {
 		data = append(data, "# HELP docker_volume_size The size of the volumes and the number of containers associated with it in the volumeUsage tag")
 		data = append(data, "# TYPE docker_volume_size gauge")
-		for _, vol := range m.volumeMetrics {
+		for _, volume := range m.volumeMetrics {
 			metricText := fmt.Sprintf("docker_volume_size{volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\",hostname=\"%s\"} %v",
-				vol.name,
-				vol.driver,
-				vol.usage,
+				volume.name,
+				volume.driver,
+				volume.usage,
 				hostname,
-				vol.size,
+				volume.size,
 			)
 			data = append(data, metricText)
 		}
 		data = append(data, "")
 	}
 
-	// #9 Fill in the status for all containers
-	data = append(data, "# HELP docker_container_status Container status: running (1) or stopped (0)")
-	data = append(data, "# TYPE docker_container_status gauge")
-	for id, info := range m.info {
-		var upValue int
-		if info.state == "running" {
-			upValue = 1
+	// Fill in the inspect metrics for all containers
+	for id := range m.info {
+		data = append(data, m.prometheusInspectMetrics(id, hostname)...)
+		// Fill in the base metrics for running containers
+		if m.info[id].state == "running" {
+			data = append(data, m.prometheusBaseMetrics(id, hostname)...)
 		}
-		data = append(data, m.prometheusFormat(
-			"docker_container_status",
-			"", // skip help
-			"", // skip data type
-			id,
-			info.name,
-			info.composeProject,
-			info.composeService,
-			info.composeWorkDir,
-			hostname,
-			upValue,
-		)...)
-	}
-
-	data = append(data, "")
-
-	// Fill in the base and logs metrics
-	for _, id := range m.ID {
-		data = append(data, m.prometheusMetrics(id, hostname)...)
+		data = append(data, "")
 	}
 
 	return data

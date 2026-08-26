@@ -154,7 +154,7 @@ func (m *Metrics) ImageMetricsWorker(dockerClient *client.Client, logger *slog.L
 		}
 	}
 	m.imageUpdateMetrics = m.getImagesUpdateMetrics(dockerClient, logger)
-	imageCount := len(m.volumeMetrics)
+	imageCount := len(m.imageMetrics)
 	updateCount := 0
 	for _, image := range m.imageUpdateMetrics {
 		if image.updateStatus == 1 {
