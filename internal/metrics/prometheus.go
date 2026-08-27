@@ -13,7 +13,7 @@ func (m *Metrics) prometheusFormat(
 	composeProject,
 	composeService,
 	composeWorkDir string,
-	customLabels []CustomLabels,
+	customLabels []customLabelsKV,
 	hostname string,
 	value any,
 ) []string {
@@ -57,14 +57,13 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 	// Main text slice
 	var data []string
 
-	// Get container name and state
-	containerName := m.info[id].name
-	containerState := m.info[id].state
-
-	// Get compose labels
-	composeProject := m.info[id].composeProject
-	composeService := m.info[id].composeService
-	composeWorkDir := m.info[id].composeWorkDir
+	// Get labels
+	containerName := m.Info[id].name
+	containerState := m.Info[id].state
+	composeProject := m.Info[id].composeProject
+	composeService := m.Info[id].composeService
+	composeWorkDir := m.Info[id].composeWorkDir
+	customLabels := m.Info[id].customLabelsKV
 
 	// Status
 	status := 0
@@ -81,7 +80,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		status,
 	)...)
@@ -103,7 +102,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 			composeProject,
 			composeService,
 			composeWorkDir,
-			[]CustomLabels{},
+			customLabels,
 			hostname,
 			m.inspectMetrics[id].healthy,
 		)...)
@@ -120,7 +119,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.inspectMetrics[id].exitCode,
 	)...)
@@ -136,7 +135,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.inspectMetrics[id].oomKilled,
 	)...)
@@ -152,7 +151,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.inspectMetrics[id].startedTimestamp,
 	)...)
@@ -170,14 +169,13 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 	// Main text slice
 	var data []string
 
-	// Get container name and state
-	containerName := m.info[id].name
-	containerState := m.info[id].state
-
-	// Get compose labels
-	composeProject := m.info[id].composeProject
-	composeService := m.info[id].composeService
-	composeWorkDir := m.info[id].composeWorkDir
+	// Get labels
+	containerName := m.Info[id].name
+	containerState := m.Info[id].state
+	composeProject := m.Info[id].composeProject
+	composeService := m.Info[id].composeService
+	composeWorkDir := m.Info[id].composeWorkDir
+	customLabels := m.Info[id].customLabelsKV
 
 	// CPU
 	data = append(data, m.prometheusFormat(
@@ -190,7 +188,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].cpuTotal,
 	)...)
@@ -205,7 +203,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].cpuUser,
 	)...)
@@ -220,7 +218,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].cpuKernel,
 	)...)
@@ -236,7 +234,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].memTotalBytes,
 	)...)
@@ -251,7 +249,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].memUsageBytes,
 	)...)
@@ -267,7 +265,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].netReceiveBytes,
 	)...)
@@ -282,7 +280,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].netReceivePackets,
 	)...)
@@ -297,7 +295,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].netTransmitBytes,
 	)...)
@@ -312,7 +310,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].netTransmitPackets,
 	)...)
@@ -328,7 +326,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].ioReadBytes,
 	)...)
@@ -343,7 +341,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].ioWriteBytes,
 	)...)
@@ -359,7 +357,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeProject,
 		composeService,
 		composeWorkDir,
-		[]CustomLabels{},
+		customLabels,
 		hostname,
 		m.baseMetrics[id].pids,
 	)...)

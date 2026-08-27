@@ -107,7 +107,7 @@ jobs:
         if: ${{ github.event.inputs.Check == 'true' }}
         run: |
           docker run -d --name logporter \
-            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v /var/run/docker.sock:/var/run/docker.sock:ro \
             -p 9333:9333 \
             --restart=always \
             -e "LOG_LEVEL=debug" \

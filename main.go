@@ -27,7 +27,7 @@ func loggingMiddleware(m *metrics.Metrics, next http.Handler, logger *slog.Logge
 			"path", r.URL.Path,
 		)
 		next.ServeHTTP(w, r)
-		containersCount := len(m.ID)
+		containersCount := len(m.Info)
 		logger.Info(
 			"response sent",
 			"source", r.RemoteAddr,
@@ -92,6 +92,12 @@ func main() {
 		hostname = exporter.GetHostname(dockerClient)
 	} else {
 		hostname = envHostname
+	}
+
+	// #18 Add custom labels
+	envLabels := os.Getenv("DOCKER_CUSTOM_LABELS")
+	if envLabels != "" {
+		exporter.CustomLabelsKeys = strings.Split(envLabels, ",")
 	}
 
 	exporter.CacheTTL = 15 * time.Second

@@ -16,13 +16,14 @@ import (
 )
 
 type Metrics struct {
-	ID                    []string
-	info                  map[string]*Info
+	idRunning             []string
+	Info                  map[string]*Info
 	baseMetrics           map[string]*BaseMetrics
 	inspectMetrics        map[string]*InspectMetric
 	imageMetrics          []imageMetric
 	imageUpdateMetrics    []imageUpdateMetrics
 	volumeMetrics         []volumeMetric
+	CustomLabelsKeys      []string
 	CacheData             []string
 	CacheTime             time.Time
 	CacheTTL              time.Duration
@@ -41,7 +42,7 @@ type Info struct {
 	composeProject string // com.docker.compose.project
 	composeService string // com.docker.compose.service
 	composeWorkDir string // com.docker.compose.project.working_dir
-
+	customLabelsKV []customLabelsKV
 }
 
 type BaseMetrics struct {
@@ -69,7 +70,7 @@ type InspectMetric struct {
 	healthy          int
 }
 
-type CustomLabels struct {
+type customLabelsKV struct {
 	key   string
 	value string
 }
@@ -94,6 +95,19 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *s
 		i.composeProject = container.Labels["com.docker.compose.project"]
 		i.composeService = container.Labels["com.docker.compose.service"]
 		i.composeWorkDir = container.Labels["com.docker.compose.project.working_dir"]
+
+		// #18 Check and add custom labels to KV struct
+		if m.CustomLabelsKeys != nil {
+			for _, labelKey := range m.CustomLabelsKeys {
+				labelValue := container.Labels[labelKey]
+				if labelValue != "" {
+					i.customLabelsKV = append(i.customLabelsKV, customLabelsKV{
+						key:   labelKey,
+						value: labelValue,
+					})
+				}
+			}
+		}
 
 		currentId := container.ID
 		info[currentId] = &i
@@ -240,7 +254,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 }
 
 // Get metrics from inspect method
-func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric, logger *slog.Logger) {
+func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric, logger *slog.Logger) {
 	defer wg.Done()
 	inspectData, err := dockerClient.ContainerInspect(context.Background(), id)
 	if err != nil {
@@ -287,15 +301,15 @@ func (m *Metrics) getInspect(dockerClient *client.Client, id string, wg *sync.Wa
 // Main function for getting metrics
 func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
 	// Get a list of containers with status information and all container ID array
-	m.info, m.ID = m.getContainers(dockerClient, true, logger)
+	m.Info, m.idRunning = m.getContainers(dockerClient, true, logger)
 
 	// Create a waiting group and a buffered channel to store data from goroutines
 	var wg sync.WaitGroup
-	wg.Add(len(m.ID))
-	results := make(chan *BaseMetrics, len(m.ID))
+	wg.Add(len(m.idRunning))
+	results := make(chan *BaseMetrics, len(m.idRunning))
 
 	// Get base metrics for running containers
-	for _, id := range m.ID {
+	for _, id := range m.idRunning {
 		go func(containerID string) {
 			defer wg.Done()
 			res := m.getBaseMetrics(dockerClient, containerID, logger)
@@ -317,8 +331,8 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	}
 
 	// Get metrics from inspect for all containers
-	allID := make([]string, 0, len(m.info))
-	for id := range m.info {
+	allID := make([]string, 0, len(m.Info))
+	for id := range m.Info {
 		allID = append(allID, id)
 	}
 
@@ -326,7 +340,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	inspectData := make(chan *InspectMetric, len(allID))
 
 	for _, id := range allID {
-		go m.getInspect(dockerClient, id, &wg, inspectData, logger)
+		go m.getInspectMetrics(dockerClient, id, &wg, inspectData, logger)
 	}
 
 	wg.Wait()
@@ -403,11 +417,11 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 		data = append(data, "")
 	}
 
-	// Fill in the inspect metrics for all containers
-	for id := range m.info {
+	// #19 Fill in the inspect metrics for all containers
+	for id := range m.Info {
 		data = append(data, m.prometheusInspectMetrics(id, hostname)...)
 		// Fill in the base metrics for running containers
-		if m.info[id].state == "running" {
+		if m.Info[id].state == "running" {
 			data = append(data, m.prometheusBaseMetrics(id, hostname)...)
 		}
 		data = append(data, "")
