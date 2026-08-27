@@ -38,6 +38,7 @@ func (m *Metrics) prometheusFormat(
 		labels += fmt.Sprintf(",composeWorkDir=\"%s\"", composeWorkDir)
 	}
 
+	// #18 Add custom labels (3)
 	if len(customLabels) > 0 {
 		for _, customLabel := range customLabels {
 			labels += fmt.Sprintf(",\"%s\"=\"%s\"", customLabel.key, customLabel.value)

@@ -91,15 +91,26 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *s
 		i.state = container.State
 		i.status = container.Status
 
+		// for key, value := range container.Labels {
+		// 	logger.Debug(
+		// 		"Container labels list",
+		// 		"id", container.ID,
+		// 		"name", i.name,
+		// 		"key", key,
+		// 		"value", value,
+		// 	)
+		// }
+
 		// #8 Add compose labels
 		i.composeProject = container.Labels["com.docker.compose.project"]
 		i.composeService = container.Labels["com.docker.compose.service"]
 		i.composeWorkDir = container.Labels["com.docker.compose.project.working_dir"]
 
-		// #18 Check and add custom labels to KV struct
+		// #18 Add custom labels to KV struct (2)
 		if m.CustomLabelsKeys != nil {
 			for _, labelKey := range m.CustomLabelsKeys {
 				labelValue := container.Labels[labelKey]
+				// Check label value
 				if labelValue != "" {
 					i.customLabelsKV = append(i.customLabelsKV, customLabelsKV{
 						key:   labelKey,

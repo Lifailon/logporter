@@ -11,7 +11,7 @@
                 "DOCKER_HOST": "tcp://127.0.0.1:2375",
                 "LOG_LEVEL": "debug",
                 "DOCKER_METRICS_HOSTNAME": "vscode",
-                "DOCKER_CUSTOM_LABELS": "org.opencontainers.image.url,org.opencontainers.image.version,org.opencontainers.image.created",
+                "DOCKER_METRICS_CUSTOM_LABELS": "org.opencontainers.image.url,org.opencontainers.image.version,org.opencontainers.image.created",
                 // "DOCKER_METRICS_PORT": "9333",
                 // "DOCKER_METRICS_CACHE": "5",
                 // "DOCKER_METRICS_VOLUME": "false",

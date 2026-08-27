@@ -94,8 +94,8 @@ func main() {
 		hostname = envHostname
 	}
 
-	// #18 Add custom labels
-	envLabels := os.Getenv("DOCKER_CUSTOM_LABELS")
+	// #18 Add custom labels to array (1)
+	envLabels := os.Getenv("DOCKER_METRICS_CUSTOM_LABELS")
 	if envLabels != "" {
 		exporter.CustomLabelsKeys = strings.Split(envLabels, ",")
 	}
