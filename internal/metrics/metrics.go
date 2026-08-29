@@ -70,6 +70,8 @@ type InspectMetric struct {
 	exitCode         int
 	oomKilled        int
 	healthy          int
+	volumeMounts     int
+	bindMounts       int
 }
 
 type customLabelsKV struct {
@@ -173,7 +175,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 
 	bm.id = id
 
-	// Processor
+	// CPU
 	cpuStats, ok := data["cpu_stats"].(map[string]any)
 	if ok {
 		cpuUsage, ok := cpuStats["cpu_usage"].(map[string]any)
@@ -310,6 +312,16 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 			healthy = 1
 		}
 	}
+	// Mounts count
+	bindMounts := 0
+	volumeMounts := 0
+	for _, mnt := range inspectData.Mounts {
+		if mnt.Driver == "" {
+			bindMounts++
+		} else {
+			volumeMounts++
+		}
+	}
 	data := InspectMetric{
 		id:               id,
 		startedTimestamp: startedTimestamp,
@@ -317,6 +329,8 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 		exitCode:         exitCode,
 		oomKilled:        oomKilled,
 		healthy:          healthy,
+		bindMounts:       bindMounts,
+		volumeMounts:     volumeMounts,
 	}
 	results <- &data
 }

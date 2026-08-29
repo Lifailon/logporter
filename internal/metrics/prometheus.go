@@ -157,6 +157,38 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		m.inspectMetrics[id].startedTimestamp,
 	)...)
 
+	// Bind mounts
+	data = append(data, m.prometheusFormat(
+		"docker_bind_mounts",
+		"Number of volumes mounted on host file system",
+		"gauge",
+		id,
+		containerName,
+		containerState,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		customLabels,
+		hostname,
+		m.inspectMetrics[id].bindMounts,
+	)...)
+
+	// Volume mounts
+	data = append(data, m.prometheusFormat(
+		"docker_volume_mounts",
+		"Number of local volumes mounted",
+		"gauge",
+		id,
+		containerName,
+		containerState,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		customLabels,
+		hostname,
+		m.inspectMetrics[id].volumeMounts,
+	)...)
+
 	return data
 }
 
