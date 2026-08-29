@@ -23,6 +23,8 @@ type Metrics struct {
 	imageMetrics          []imageMetric
 	imageUpdateMetrics    []imageUpdateMetrics
 	volumeMetrics         []volumeMetric
+	volumeUsage           map[string][]string
+	imageUsage            map[string][]string
 	CustomLabelsKeys      []string
 	CacheData             []string
 	CacheTime             time.Time
@@ -83,6 +85,8 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *s
 		return nil, nil
 	}
 	info := map[string]*Info{}
+	m.volumeUsage = make(map[string][]string)
+	m.imageUsage = make(map[string][]string)
 	var idArr []string
 	for _, container := range containers {
 		// Fills the info structure
@@ -122,6 +126,14 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *s
 
 		currentId := container.ID
 		info[currentId] = &i
+
+		// Mapping volume names and container names
+		for _, mount := range container.Mounts {
+			if mount.Type == "volume" && mount.Name != "" {
+				m.volumeUsage[mount.Name] = append(m.volumeUsage[mount.Name], i.name)
+			}
+		}
+		m.imageUsage[container.ImageID] = append(m.imageUsage[container.ImageID], i.name)
 
 		// Fills an array of container id for get metrics (skip for stopped)
 		if container.State == "running" {
@@ -379,11 +391,15 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	data = append(data, "# HELP docker_image_size The size of the image minus the layer shared by other images")
 	data = append(data, "# TYPE docker_image_size gauge")
 	for _, image := range m.imageMetrics {
-		metricText := fmt.Sprintf("docker_image_size{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",hostname=\"%s\"} %v",
+		imageUsage := len(m.imageUsage[image.id])
+		imageContainers := strings.Join(m.imageUsage[image.id], ",")
+		metricText := fmt.Sprintf("docker_image_size{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",imageUsage=\"%d\",imageContainers=\"%s\",hostname=\"%s\"} %v",
 			image.name,
 			image.tag,
 			image.registry,
 			image.digest,
+			imageUsage,
+			imageContainers,
 			hostname,
 			image.size,
 		)
@@ -396,13 +412,17 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 		data = append(data, "# HELP docker_image_update Image update status based on digests: update required (1) or latest version (0)")
 		data = append(data, "# TYPE docker_image_update gauge")
 		for _, image := range m.imageUpdateMetrics {
+			imageUsage := len(m.imageUsage[image.id])
+			imageContainers := strings.Join(m.imageUsage[image.id], ",")
 			metricText := fmt.Sprintf(
-				"docker_image_update{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",remoteVersion=\"%s\",hostname=\"%s\"} %v",
+				"docker_image_update{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",remoteVersion=\"%s\",imageUsage=\"%d\",imageContainers=\"%s\",hostname=\"%s\"} %v",
 				image.name,
 				image.tag,
 				image.registry,
 				image.digest,
 				image.remoteVersion,
+				imageUsage,
+				imageContainers,
 				hostname,
 				image.updateStatus,
 			)
@@ -416,10 +436,11 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 		data = append(data, "# HELP docker_volume_size The size of the volumes and the number of containers associated with it in the volumeUsage tag")
 		data = append(data, "# TYPE docker_volume_size gauge")
 		for _, volume := range m.volumeMetrics {
-			metricText := fmt.Sprintf("docker_volume_size{volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\",hostname=\"%s\"} %v",
+			metricText := fmt.Sprintf("docker_volume_size{volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\",volumeContainers=\"%s\",hostname=\"%s\"} %v",
 				volume.name,
 				volume.driver,
 				volume.usage,
+				strings.Join(m.volumeUsage[volume.name], ","),
 				hostname,
 				volume.size,
 			)

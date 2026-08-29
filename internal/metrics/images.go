@@ -15,6 +15,7 @@ import (
 )
 
 type imageMetric struct {
+	id       string
 	fullName string
 	name     string
 	tag      string
@@ -24,6 +25,7 @@ type imageMetric struct {
 }
 
 type imageUpdateMetrics struct {
+	id            string
 	name          string
 	tag           string
 	registry      string
@@ -80,6 +82,7 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 			size = size - sharedSize
 		}
 		data := imageMetric{
+			id:       image.ID,
 			fullName: imageFullName,
 			name:     imageName,
 			tag:      imageTag,
@@ -128,6 +131,7 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 						name:          image.name,
 						tag:           image.tag,
 						registry:      image.registry,
+						id:            image.id,
 						digest:        image.digest,
 						remoteVersion: remoteDigest,
 						updateStatus:  updateStatus,
