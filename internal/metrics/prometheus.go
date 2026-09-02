@@ -59,12 +59,12 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 	var data []string
 
 	// Get labels
-	containerName := m.Info[id].name
-	containerState := m.Info[id].state
-	composeProject := m.Info[id].composeProject
-	composeService := m.Info[id].composeService
-	composeWorkDir := m.Info[id].composeWorkDir
-	customLabels := m.Info[id].customLabelsKV
+	containerName := m.Labels[id].name
+	containerState := m.Labels[id].state
+	composeProject := m.Labels[id].composeProject
+	composeService := m.Labels[id].composeService
+	composeWorkDir := m.Labels[id].composeWorkDir
+	customLabels := m.Labels[id].customLabelsKV
 
 	// Status
 	status := 0
@@ -91,12 +91,28 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		return data
 	}
 
+	// Started time
+	data = append(data, m.prometheusFormat(
+		"docker_started_time",
+		"Container started timestamp",
+		"gauge",
+		id,
+		containerName,
+		containerState,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		customLabels,
+		hostname,
+		m.inspectMetrics[id].startedTimestamp,
+	)...)
+
 	// Healthy
 	if m.inspectMetrics[id].healthy != 2 {
 		data = append(data, m.prometheusFormat(
 			"docker_container_healthy",
 			"Health check status",
-			"counter",
+			"gauge",
 			id,
 			containerName,
 			containerState,
@@ -129,7 +145,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 	data = append(data, m.prometheusFormat(
 		"docker_oom_killed",
 		"Memory limit exceeded",
-		"counter",
+		"gauge",
 		id,
 		containerName,
 		containerState,
@@ -141,21 +157,21 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		m.inspectMetrics[id].oomKilled,
 	)...)
 
-	// Started time
-	data = append(data, m.prometheusFormat(
-		"docker_started_time",
-		"Container started timestamp",
-		"gauge",
-		id,
-		containerName,
-		containerState,
-		composeProject,
-		composeService,
-		composeWorkDir,
-		customLabels,
-		hostname,
-		m.inspectMetrics[id].startedTimestamp,
-	)...)
+	// Memory limits
+	// data = append(data, m.prometheusFormat(
+	// 	"docker_memory_limit",
+	// 	"Hard memory limit (if the value is 0, then no limit is set)",
+	// 	"gauge",
+	// 	id,
+	// 	containerName,
+	// 	containerState,
+	// 	composeProject,
+	// 	composeService,
+	// 	composeWorkDir,
+	// 	customLabels,
+	// 	hostname,
+	// 	m.inspectMetrics[id].memoryLimit,
+	// )...)
 
 	// Bind mounts
 	data = append(data, m.prometheusFormat(
@@ -203,12 +219,12 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 	var data []string
 
 	// Get labels
-	containerName := m.Info[id].name
-	containerState := m.Info[id].state
-	composeProject := m.Info[id].composeProject
-	composeService := m.Info[id].composeService
-	composeWorkDir := m.Info[id].composeWorkDir
-	customLabels := m.Info[id].customLabelsKV
+	containerName := m.Labels[id].name
+	containerState := m.Labels[id].state
+	composeProject := m.Labels[id].composeProject
+	composeService := m.Labels[id].composeService
+	composeWorkDir := m.Labels[id].composeWorkDir
+	customLabels := m.Labels[id].customLabelsKV
 
 	// CPU
 	data = append(data, m.prometheusFormat(
@@ -258,8 +274,8 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 
 	// Memory
 	data = append(data, m.prometheusFormat(
-		"docker_memory_total",
-		"Total memory size in bytes",
+		"docker_memory_limit",
+		"Memory limit size in bytes (if no value is specified, the total amount of available memory is displayed)",
 		"gauge",
 		id,
 		containerName,
@@ -269,7 +285,7 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 		composeWorkDir,
 		customLabels,
 		hostname,
-		m.baseMetrics[id].memTotalBytes,
+		m.baseMetrics[id].memoryLimit,
 	)...)
 
 	data = append(data, m.prometheusFormat(

@@ -17,7 +17,8 @@ import (
 
 type Metrics struct {
 	idRunning             []string
-	Info                  map[string]*Info
+	Info                  *Info
+	Labels                map[string]*Labels
 	baseMetrics           map[string]*BaseMetrics
 	inspectMetrics        map[string]*InspectMetric
 	imageMetrics          []imageMetric
@@ -38,6 +39,13 @@ type Metrics struct {
 }
 
 type Info struct {
+	Hostname        string
+	totalMemory     int64
+	numberCPU       int
+	defaultRegistry string
+}
+
+type Labels struct {
 	name           string
 	state          string
 	status         string
@@ -47,12 +55,17 @@ type Info struct {
 	customLabelsKV []customLabelsKV
 }
 
+type customLabelsKV struct {
+	key   string
+	value string
+}
+
 type BaseMetrics struct {
 	id                 string
 	cpuTotal           float64
 	cpuUser            float64
 	cpuKernel          float64
-	memTotalBytes      int
+	memoryLimit        int
 	memUsageBytes      int
 	netReceiveBytes    int
 	netReceivePackets  int
@@ -65,34 +78,50 @@ type BaseMetrics struct {
 
 type InspectMetric struct {
 	id               string
-	startedTimestamp float64
 	status           string
+	startedTimestamp float64
+	healthy          int
 	exitCode         int
 	oomKilled        int
-	healthy          int
+	memoryLimit      int64
 	volumeMounts     int
 	bindMounts       int
 }
 
-type customLabelsKV struct {
-	key   string
-	value string
+// Get general metrics and hostname from Docker Info or OS
+func (m *Metrics) GetDockerInfo(dockerClient *client.Client) *Info {
+	info := Info{}
+	hostname := "none"
+	dockerInfo, err := dockerClient.Info(context.Background())
+	if err == nil {
+		hostname = dockerInfo.Name
+	} else {
+		oshn, err := os.Hostname()
+		if err == nil {
+			hostname = oshn
+		}
+	}
+	info.Hostname = hostname
+	info.totalMemory = dockerInfo.MemTotal
+	info.numberCPU = dockerInfo.NCPU
+	info.defaultRegistry = dockerInfo.IndexServerAddress
+	return &info
 }
 
 // Get information about all containers (second param to get all or only started containers)
-func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *slog.Logger) (map[string]*Info, []string) {
+func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *slog.Logger) (map[string]*Labels, []string) {
 	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: All})
 	if err != nil {
 		logger.Error("failed to get container list", "error", err)
 		return nil, nil
 	}
-	info := map[string]*Info{}
+	info := map[string]*Labels{}
 	m.volumeUsage = make(map[string][]string)
 	m.imageUsage = make(map[string][]string)
 	var idArr []string
 	for _, container := range containers {
 		// Fills the info structure
-		i := Info{}
+		i := Labels{}
 		i.name = strings.Replace(container.Names[0], "/", "", 1)
 		i.state = container.State
 		i.status = container.Status
@@ -197,16 +226,16 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 	}
 
 	// Memory
-	memory_stats, ok := data["memory_stats"].(map[string]any)
+	memoryStats, ok := data["memory_stats"].(map[string]any)
 	if ok {
-		memory_limit, ok := memory_stats["limit"].(float64)
+		memoryLimit, ok := memoryStats["limit"].(float64)
 		if ok {
-			memLimit := int(memory_limit)
-			bm.memTotalBytes = memLimit
+			memLimit := int(memoryLimit)
+			bm.memoryLimit = memLimit
 		}
-		memory_usage, ok := memory_stats["usage"].(float64)
+		memoryUsage, ok := memoryStats["usage"].(float64)
 		if ok {
-			memUsage := int(memory_usage)
+			memUsage := int(memoryUsage)
 			bm.memUsageBytes = memUsage
 		}
 	}
@@ -298,12 +327,7 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 	startedTimestamp := float64(startedTime.Unix())
 	// Get state metrics
 	status := inspectData.ContainerJSONBase.State.Status
-	exitCode := inspectData.ContainerJSONBase.State.ExitCode
-	oomKilled := 0
-	stateOOM := inspectData.ContainerJSONBase.State.OOMKilled
-	if stateOOM {
-		oomKilled = 1
-	}
+	// Health check
 	healthy := 2
 	stateHealth := inspectData.ContainerJSONBase.State.Health
 	if stateHealth != nil {
@@ -312,6 +336,16 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 			healthy = 1
 		}
 	}
+	// Exit code
+	exitCode := inspectData.ContainerJSONBase.State.ExitCode
+	// OOM
+	oomKilled := 0
+	stateOOM := inspectData.ContainerJSONBase.State.OOMKilled
+	if stateOOM {
+		oomKilled = 1
+	}
+	// Memory limit
+	memoryLimit := inspectData.ContainerJSONBase.HostConfig.Resources.Memory
 	// Mounts count
 	bindMounts := 0
 	volumeMounts := 0
@@ -329,6 +363,7 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 		exitCode:         exitCode,
 		oomKilled:        oomKilled,
 		healthy:          healthy,
+		memoryLimit:      memoryLimit,
 		bindMounts:       bindMounts,
 		volumeMounts:     volumeMounts,
 	}
@@ -338,7 +373,7 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 // Main function for getting metrics
 func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
 	// Get a list of containers with status information and all container ID array
-	m.Info, m.idRunning = m.getContainers(dockerClient, true, logger)
+	m.Labels, m.idRunning = m.getContainers(dockerClient, true, logger)
 
 	// Create a waiting group and a buffered channel to store data from goroutines
 	var wg sync.WaitGroup
@@ -368,8 +403,8 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	}
 
 	// Get metrics from inspect for all containers
-	allID := make([]string, 0, len(m.Info))
-	for id := range m.Info {
+	allID := make([]string, 0, len(m.Labels))
+	for id := range m.Labels {
 		allID = append(allID, id)
 	}
 
@@ -463,28 +498,24 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 		data = append(data, "")
 	}
 
+	// General metrics
+	data = append(data, "# HELP docker_cpu_number_total Total available vCPUs")
+	data = append(data, "# TYPE docker_cpu_number_total gauge")
+	data = append(data, fmt.Sprintf("docker_cpu_number_total{hostname=\"%s\"} %v", hostname, m.Info.numberCPU))
+	data = append(data, "# HELP docker_memory_total Total memory size in bytes")
+	data = append(data, "# TYPE docker_memory_total gauge")
+	data = append(data, fmt.Sprintf("docker_memory_total{hostname=\"%s\"} %v", hostname, m.Info.totalMemory))
+	data = append(data, "")
+
 	// #19 Fill in the inspect metrics for all containers
-	for id := range m.Info {
+	for id := range m.Labels {
 		data = append(data, m.prometheusInspectMetrics(id, hostname)...)
 		// Fill in the base metrics for running containers
-		if m.Info[id].state == "running" {
+		if m.Labels[id].state == "running" {
 			data = append(data, m.prometheusBaseMetrics(id, hostname)...)
 		}
 		data = append(data, "")
 	}
 
 	return data
-}
-
-// Get hostname from Docker Info or OS
-func (m *Metrics) GetHostname(dockerClient *client.Client) string {
-	info, err := dockerClient.Info(context.Background())
-	if err == nil {
-		return info.Name
-	}
-	hostname, err := os.Hostname()
-	if err == nil {
-		return hostname
-	}
-	return "nil"
 }

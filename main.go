@@ -27,7 +27,7 @@ func loggingMiddleware(m *metrics.Metrics, next http.Handler, logger *slog.Logge
 			"path", r.URL.Path,
 		)
 		next.ServeHTTP(w, r)
-		containersCount := len(m.Info)
+		containersCount := len(m.Labels)
 		logger.Info(
 			"response sent",
 			"source", r.RemoteAddr,
@@ -87,10 +87,10 @@ func main() {
 		}
 	}
 
+	exporter.Info = exporter.GetDockerInfo(dockerClient)
+	hostname = exporter.Info.Hostname
 	envHostname := os.Getenv("DOCKER_METRICS_HOSTNAME")
-	if envHostname == "" {
-		hostname = exporter.GetHostname(dockerClient)
-	} else {
+	if envHostname != "" {
 		hostname = envHostname
 	}
 
