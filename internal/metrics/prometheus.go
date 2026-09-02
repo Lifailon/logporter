@@ -157,23 +157,23 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		m.inspectMetrics[id].oomKilled,
 	)...)
 
-	// Memory limits from inspect
-	// data = append(data, m.prometheusFormat(
-	// 	"docker_memory_limit",
-	// 	"Hard memory limit (if the value is 0, then no limit is set)",
-	// 	"gauge",
-	// 	id,
-	// 	containerName,
-	// 	containerState,
-	// 	composeProject,
-	// 	composeService,
-	// 	composeWorkDir,
-	// 	customLabels,
-	// 	hostname,
-	// 	m.inspectMetrics[id].memoryLimit,
-	// )...)
+	// Memory hard limit from inspect
+	data = append(data, m.prometheusFormat(
+		"docker_memory_inspect_limit",
+		"Raw memory limit size in bytes (if the value is 0, then no limit is set)",
+		"gauge",
+		id,
+		containerName,
+		containerState,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		customLabels,
+		hostname,
+		m.inspectMetrics[id].memoryLimit,
+	)...)
 
-	// Sizes
+	// Layers size
 	data = append(data, m.prometheusFormat(
 		"docker_size_rw",
 		"Size of the container writable layer in bytes",
@@ -305,8 +305,8 @@ func (m *Metrics) prometheusBaseMetrics(id string, hostname string) []string {
 
 	// Memory
 	data = append(data, m.prometheusFormat(
-		"docker_memory_limit",
-		"Memory limit size in bytes (if no value is specified, the total amount of available memory is displayed)",
+		"docker_memory_current_limit",
+		"Current memory limit size in bytes (if no value is specified, the total amount of available memory is displayed)",
 		"gauge",
 		id,
 		containerName,

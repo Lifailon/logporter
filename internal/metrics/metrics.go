@@ -506,9 +506,9 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	}
 
 	// General metrics
-	data = append(data, "# HELP docker_cpu_number_total Total available vCPUs")
-	data = append(data, "# TYPE docker_cpu_number_total gauge")
-	data = append(data, fmt.Sprintf("docker_cpu_number_total{hostname=\"%s\"} %v", hostname, m.Info.numberCPU))
+	data = append(data, "# HELP docker_cpu_total_number Total available vCPUs")
+	data = append(data, "# TYPE docker_cpu_total_number gauge")
+	data = append(data, fmt.Sprintf("docker_cpu_total_number{hostname=\"%s\"} %v", hostname, m.Info.numberCPU))
 	data = append(data, "# HELP docker_memory_total Total memory size in bytes")
 	data = append(data, "# TYPE docker_memory_total gauge")
 	data = append(data, fmt.Sprintf("docker_memory_total{hostname=\"%s\"} %v", hostname, m.Info.totalMemory))
