@@ -84,6 +84,8 @@ type InspectMetric struct {
 	exitCode         int
 	oomKilled        int
 	memoryLimit      int64
+	sizeRw           int64
+	sizeRootFs       int64
 	volumeMounts     int
 	bindMounts       int
 }
@@ -310,7 +312,7 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 // Get metrics from inspect method
 func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric, logger *slog.Logger) {
 	defer wg.Done()
-	inspectData, err := dockerClient.ContainerInspect(context.Background(), id)
+	inspectData, _, err := dockerClient.ContainerInspectWithRaw(context.Background(), id, true)
 	if err != nil {
 		logger.Error("failed to inspect container", "error", err)
 		return
@@ -346,6 +348,9 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 	}
 	// Memory limit
 	memoryLimit := inspectData.ContainerJSONBase.HostConfig.Resources.Memory
+	// Layers size
+	sizeRw := *inspectData.SizeRw
+	sizeRootFs := *inspectData.SizeRootFs
 	// Mounts count
 	bindMounts := 0
 	volumeMounts := 0
@@ -364,6 +369,8 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 		oomKilled:        oomKilled,
 		healthy:          healthy,
 		memoryLimit:      memoryLimit,
+		sizeRw:           sizeRw,
+		sizeRootFs:       sizeRootFs,
 		bindMounts:       bindMounts,
 		volumeMounts:     volumeMounts,
 	}

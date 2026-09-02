@@ -157,7 +157,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 		m.inspectMetrics[id].oomKilled,
 	)...)
 
-	// Memory limits
+	// Memory limits from inspect
 	// data = append(data, m.prometheusFormat(
 	// 	"docker_memory_limit",
 	// 	"Hard memory limit (if the value is 0, then no limit is set)",
@@ -172,6 +172,37 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 	// 	hostname,
 	// 	m.inspectMetrics[id].memoryLimit,
 	// )...)
+
+	// Sizes
+	data = append(data, m.prometheusFormat(
+		"docker_size_rw",
+		"Size of the container writable layer in bytes",
+		"gauge",
+		id,
+		containerName,
+		containerState,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		customLabels,
+		hostname,
+		m.inspectMetrics[id].sizeRw,
+	)...)
+
+	data = append(data, m.prometheusFormat(
+		"docker_size_root_fs",
+		"Total size of the container filesystem in bytes (shared image layers and writable layer)",
+		"gauge",
+		id,
+		containerName,
+		containerState,
+		composeProject,
+		composeService,
+		composeWorkDir,
+		customLabels,
+		hostname,
+		m.inspectMetrics[id].sizeRootFs,
+	)...)
 
 	// Bind mounts
 	data = append(data, m.prometheusFormat(
