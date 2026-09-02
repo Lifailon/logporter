@@ -39,10 +39,13 @@ type Metrics struct {
 }
 
 type Info struct {
-	Hostname        string
-	totalMemory     int64
-	numberCPU       int
-	defaultRegistry string
+	Hostname          string
+	defaultRegistry   string
+	totalMemory       int64
+	numberCPU         int
+	containersRunning int
+	containersStopped int
+	imageCount        int
 }
 
 type Labels struct {
@@ -104,9 +107,12 @@ func (m *Metrics) GetDockerInfo(dockerClient *client.Client) *Info {
 		}
 	}
 	info.Hostname = hostname
+	info.defaultRegistry = dockerInfo.IndexServerAddress
 	info.totalMemory = dockerInfo.MemTotal
 	info.numberCPU = dockerInfo.NCPU
-	info.defaultRegistry = dockerInfo.IndexServerAddress
+	info.containersRunning = dockerInfo.ContainersRunning
+	info.containersStopped = dockerInfo.ContainersStopped
+	info.imageCount = dockerInfo.Images
 	return &info
 }
 
@@ -512,6 +518,15 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	data = append(data, "# HELP docker_memory_total Total memory size in bytes")
 	data = append(data, "# TYPE docker_memory_total gauge")
 	data = append(data, fmt.Sprintf("docker_memory_total{hostname=\"%s\"} %v", hostname, m.Info.totalMemory))
+	data = append(data, "# HELP docker_container_running_count Containers running count")
+	data = append(data, "# TYPE docker_container_running_count gauge")
+	data = append(data, fmt.Sprintf("docker_container_running_count{hostname=\"%s\"} %v", hostname, m.Info.containersRunning))
+	data = append(data, "# HELP docker_container_stopped_count Containers stopped count")
+	data = append(data, "# TYPE docker_container_stopped_count gauge")
+	data = append(data, fmt.Sprintf("docker_container_stopped_count{hostname=\"%s\"} %v", hostname, m.Info.containersStopped))
+	data = append(data, "# HELP docker_image_count Images count")
+	data = append(data, "# TYPE docker_image_count gauge")
+	data = append(data, fmt.Sprintf("docker_image_count{hostname=\"%s\"} %v", hostname, m.Info.imageCount))
 	data = append(data, "")
 
 	// #19 Fill in the inspect metrics for all containers
