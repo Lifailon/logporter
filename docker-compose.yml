@@ -7,11 +7,15 @@ services:
     ports:
       - 9333:9333
     environment:
+      - LOG_LEVEL=info
       - DOCKER_METRICS_PORT=9333
       - DOCKER_METRICS_HOSTNAME=
+      - DOCKER_METRICS_CUSTOM_LABELS=org.opencontainers.image.url,org.opencontainers.image.version,org.opencontainers.image.created
       - DOCKER_METRICS_CACHE=15 # 15s
       - DOCKER_METRICS_VOLUME=true
       - DOCKER_METRICS_VOLUME_CACHE=30 # 30m
+      - DOCKER_METRICS_IMAGE_UPDATE=true
+      - DOCKER_METRICS_IMAGE_INTERVAL=30 # 30m
       # Remove the LOKI_URL variable or leave it empty to disable log collection
       - LOKI_URL=http://loki:3100
       # Optional: basic auth and tenant
@@ -21,23 +25,8 @@ services:
       - LOKI_PUSH_SECONDS=5
       - LOKI_PUSH_LINES=1000
       - LOKI_BUFFER_LINES=10000
-      # Optional: use a docker proxy instead of the docker socket mount for improved security
-      # - DOCKER_HOST=tcp://docker-proxy:2375
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-
-  # Optional: a docker proxy service is only needed if DOCKER_HOST is set.
-  # It improves security by filtering api calls and disallowing write operations.
-  # docker-proxy:
-  #   image: lscr.io/linuxserver/socket-proxy:latest
-  #   container_name: docker-proxy
-  #   restart: always
-  #   expose:
-  #     - 2375
-  #   environment:
-  #     - CONTAINERS=1
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock:ro
 
   grafana:
     image: grafana/grafana:latest
