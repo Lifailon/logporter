@@ -160,7 +160,7 @@ func (m *Metrics) prometheusInspectMetrics(id string, hostname string) []string 
 	// Memory hard limit from inspect
 	data = append(data, m.prometheusFormat(
 		"docker_memory_inspect_limit",
-		"Raw memory limit size in bytes (if the value is 0, then no limit is set)",
+		"Memory limit size in bytes specified in the launch options (if the value is 0, then no limit is set)",
 		"gauge",
 		id,
 		containerName,

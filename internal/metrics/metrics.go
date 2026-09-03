@@ -334,10 +334,10 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 	// Converting to timestamp
 	startedTimestamp := float64(startedTime.Unix())
 	// Get state metrics
-	status := inspectData.ContainerJSONBase.State.Status
+	status := inspectData.State.Status
 	// Health check
 	healthy := 2
-	stateHealth := inspectData.ContainerJSONBase.State.Health
+	stateHealth := inspectData.State.Health
 	if stateHealth != nil {
 		healthy = 0
 		if inspectData.State.Health.Status == "healthy" {
@@ -345,15 +345,15 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 		}
 	}
 	// Exit code
-	exitCode := inspectData.ContainerJSONBase.State.ExitCode
+	exitCode := inspectData.State.ExitCode
 	// OOM
 	oomKilled := 0
-	stateOOM := inspectData.ContainerJSONBase.State.OOMKilled
+	stateOOM := inspectData.State.OOMKilled
 	if stateOOM {
 		oomKilled = 1
 	}
 	// Memory limit
-	memoryLimit := inspectData.ContainerJSONBase.HostConfig.Resources.Memory
+	memoryLimit := inspectData.HostConfig.Memory
 	// Layers size
 	sizeRw := *inspectData.SizeRw
 	sizeRootFs := *inspectData.SizeRootFs
@@ -518,13 +518,13 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	data = append(data, "# HELP docker_memory_total Total memory size in bytes")
 	data = append(data, "# TYPE docker_memory_total gauge")
 	data = append(data, fmt.Sprintf("docker_memory_total{hostname=\"%s\"} %v", hostname, m.Info.totalMemory))
-	data = append(data, "# HELP docker_container_running_count Containers running count")
+	data = append(data, "# HELP docker_container_running_count Number of running containers")
 	data = append(data, "# TYPE docker_container_running_count gauge")
 	data = append(data, fmt.Sprintf("docker_container_running_count{hostname=\"%s\"} %v", hostname, m.Info.containersRunning))
-	data = append(data, "# HELP docker_container_stopped_count Containers stopped count")
+	data = append(data, "# HELP docker_container_stopped_count Number of stopped containers")
 	data = append(data, "# TYPE docker_container_stopped_count gauge")
 	data = append(data, fmt.Sprintf("docker_container_stopped_count{hostname=\"%s\"} %v", hostname, m.Info.containersStopped))
-	data = append(data, "# HELP docker_image_count Images count")
+	data = append(data, "# HELP docker_image_count Number of images")
 	data = append(data, "# TYPE docker_image_count gauge")
 	data = append(data, fmt.Sprintf("docker_image_count{hostname=\"%s\"} %v", hostname, m.Info.imageCount))
 	data = append(data, "")
