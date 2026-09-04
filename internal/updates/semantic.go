@@ -11,6 +11,11 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
+type versions struct {
+	semVersion *semver.Version
+	rawVersion string
+}
+
 func getRemoteTagList(image string) []string {
 	repositoryName, err := name.NewRepository(image)
 	if err != nil {
@@ -41,21 +46,26 @@ func CheckImageUpdateSemantic(
 	}
 	// Filtering non-semantic tags in remote registry
 	tagList := getRemoteTagList(imageName)
-	var versions []*semver.Version
+	var tags []versions
 	for _, tag := range tagList {
-		v, err := semver.NewVersion(tag)
+		semVer, err := semver.NewVersion(tag)
 		if err != nil {
 			continue
 		}
-		versions = append(versions, v)
+		tags = append(tags, versions{
+			semVersion: semVer,
+			rawVersion: tag,
+		})
 	}
-	if len(versions) == 0 {
+	if len(tags) == 0 {
 		return 0, "", fmt.Errorf("no semantic tags found in the remote registry")
 	}
 	// Sort by version and get status
-	sort.Sort(semver.Collection(versions))
-	latestRemoteVer := versions[len(versions)-1]
-	status := currentVer.Compare(latestRemoteVer)
+	sort.Slice(tags, func(i, j int) bool {
+		return tags[i].semVersion.LessThan(tags[j].semVersion)
+	})
+	latestTag = tags[len(tags)-1].rawVersion
+	status := currentVer.Compare(tags[len(tags)-1].semVersion)
 	// Parsing update status
 	switch status {
 	case 1:
@@ -70,12 +80,12 @@ func CheckImageUpdateSemantic(
 		"image", imageName,
 		"status", status,
 		"currentTag", imageTag,
-		"latestTag", latestRemoteVer,
-		"remoteTags", versions,
+		"latestTag", latestTag,
+		"remoteTags", tagList,
 	)
 	if status == -1 {
-		return 0, latestRemoteVer.String(), fmt.Errorf("current tag version is higher than the one in the remote registry")
+		return 0, latestTag, fmt.Errorf("current tag version is higher than the one in the remote registry")
 	} else {
-		return status, latestRemoteVer.String(), nil
+		return status, latestTag, nil
 	}
 }
