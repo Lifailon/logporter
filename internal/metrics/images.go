@@ -16,13 +16,14 @@ import (
 )
 
 type imageMetric struct {
-	id       string
-	fullName string
-	name     string
-	tag      string
-	registry string
-	digest   string
-	size     int
+	id          string
+	fullName    string
+	name        string
+	tag         string
+	registry    string
+	createdDate int64
+	digest      string
+	size        int
 }
 
 type imageUpdateMetrics struct {
@@ -30,6 +31,7 @@ type imageUpdateMetrics struct {
 	name          string
 	tag           string
 	registry      string
+	createdDate   int64
 	digest        string
 	remoteVersion string
 	updateStatus  int
@@ -63,6 +65,7 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 				}
 			}
 		}
+		createdDate := image.Created
 		repoDigest := image.ID
 		if len(image.RepoDigests) > 0 {
 			repoDigest = image.RepoDigests[0]
@@ -77,13 +80,14 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 			size = size - sharedSize
 		}
 		data := imageMetric{
-			id:       image.ID,
-			fullName: imageFullName,
-			name:     imageName,
-			tag:      imageTag,
-			registry: registry,
-			digest:   repoDigest,
-			size:     size,
+			id:          image.ID,
+			fullName:    imageFullName,
+			name:        imageName,
+			tag:         imageTag,
+			registry:    registry,
+			createdDate: createdDate,
+			digest:      repoDigest,
+			size:        size,
 		}
 		imageMetrics = append(imageMetrics, data)
 	}
@@ -123,10 +127,11 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 					}
 					mu.Lock()
 					updateMetrics := imageUpdateMetrics{
+						id:            image.id,
 						name:          image.name,
 						tag:           image.tag,
 						registry:      image.registry,
-						id:            image.id,
+						createdDate:   image.createdDate,
 						digest:        image.digest,
 						remoteVersion: remoteDigest,
 						updateStatus:  updateStatus,

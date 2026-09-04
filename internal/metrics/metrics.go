@@ -455,10 +455,21 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	for _, image := range m.imageMetrics {
 		imageUsage := len(m.imageUsage[image.id])
 		imageContainers := strings.Join(m.imageUsage[image.id], ",")
-		metricText := fmt.Sprintf("docker_image_size{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",imageUsage=\"%d\",imageContainers=\"%s\",hostname=\"%s\"} %v",
+		metricText := fmt.Sprintf(
+			"docker_image_size{"+
+				"imageName=\"%s\","+
+				"tag=\"%s\","+
+				"registry=\"%s\","+
+				"createdDate=\"%d\","+
+				"digest=\"%s\","+
+				"imageUsage=\"%d\","+
+				"imageContainers=\"%s\","+
+				"hostname=\"%s\""+
+				"} %v",
 			image.name,
 			image.tag,
 			image.registry,
+			image.createdDate,
 			image.digest,
 			imageUsage,
 			imageContainers,
@@ -477,10 +488,21 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 			imageUsage := len(m.imageUsage[image.id])
 			imageContainers := strings.Join(m.imageUsage[image.id], ",")
 			metricText := fmt.Sprintf(
-				"docker_image_update{imageName=\"%s\",tag=\"%s\",registry=\"%s\",digest=\"%s\",remoteVersion=\"%s\",imageUsage=\"%d\",imageContainers=\"%s\",hostname=\"%s\"} %v",
+				"docker_image_update{"+
+					"imageName=\"%s\","+
+					"tag=\"%s\","+
+					"registry=\"%s\","+
+					"createdDate=\"%d\","+
+					"digest=\"%s\","+
+					"remoteVersion=\"%s\","+
+					"imageUsage=\"%d\","+
+					"imageContainers=\"%s\","+
+					"hostname=\"%s\""+
+					"} %v",
 				image.name,
 				image.tag,
 				image.registry,
+				image.createdDate,
 				image.digest,
 				image.remoteVersion,
 				imageUsage,
@@ -498,7 +520,14 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 		data = append(data, "# HELP docker_volume_size The size of the volumes and the number of containers associated with it in the volumeUsage tag")
 		data = append(data, "# TYPE docker_volume_size gauge")
 		for _, volume := range m.volumeMetrics {
-			metricText := fmt.Sprintf("docker_volume_size{volumeName=\"%s\",volumeDriver=\"%s\",volumeUsage=\"%d\",volumeContainers=\"%s\",hostname=\"%s\"} %v",
+			metricText := fmt.Sprintf(
+				"docker_volume_size{"+
+					"volumeName=\"%s\","+
+					"volumeDriver=\"%s\","+
+					"volumeUsage=\"%d\","+
+					"volumeContainers=\"%s\","+
+					"hostname=\"%s\""+
+					"} %v",
 				volume.name,
 				volume.driver,
 				volume.usage,
