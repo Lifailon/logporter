@@ -469,7 +469,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 			image.name,
 			image.tag,
 			image.registry,
-			image.createdDate,
+			image.createdTime,
 			image.digest,
 			imageUsage,
 			imageContainers,
@@ -493,6 +493,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 					"tag=\"%s\","+
 					"registry=\"%s\","+
 					"createdDate=\"%d\","+
+					"remoteDate=\"%d\","+
 					"digest=\"%s\","+
 					"remoteVersion=\"%s\","+
 					"imageUsage=\"%d\","+
@@ -502,7 +503,8 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 				image.name,
 				image.tag,
 				image.registry,
-				image.createdDate,
+				image.createdTime,
+				image.remoteTime,
 				image.digest,
 				image.remoteVersion,
 				imageUsage,
