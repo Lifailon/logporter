@@ -24,21 +24,16 @@ func getRemoteTagList(image string) []string {
 }
 
 func CheckImageUpdateSemantic(
-	imageFullName string,
+	imageFullName,
+	imageTag string,
 	logger *slog.Logger,
 ) (
 	updateStatus int,
 	latestTag string,
 	err error,
 ) {
-	// Extracting image tag
-	var imageName string
-	var imageTag string
-	splitTag := strings.Split(imageFullName, ":")
-	if len(splitTag) > 1 {
-		imageName = strings.Join(splitTag[:len(splitTag)-1], ":")
-		imageTag = splitTag[len(splitTag)-1]
-	}
+	// Remove tag from image name
+	imageName := strings.TrimSuffix(imageFullName, ":"+imageTag)
 	// Check input tag on semantic version
 	currentVer, err := semver.NewVersion(imageTag)
 	if err != nil {

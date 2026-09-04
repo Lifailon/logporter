@@ -10,6 +10,7 @@ import (
 
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/name"
 
 	"logporter/internal/updates"
 )
@@ -48,23 +49,17 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 		}
 		imageName := imageFullName
 		imageTag := "latest"
-		splitTag := strings.Split(imageFullName, ":")
-		if len(splitTag) > 1 {
-			imageName = strings.Join(splitTag[:len(splitTag)-1], ":")
-			imageTag = splitTag[len(splitTag)-1]
-		}
 		registry := "docker.io"
-		lastSlash := strings.LastIndex(imageName, "/")
-		if lastSlash != -1 {
-			secondLastSlash := strings.LastIndex(imageName[:lastSlash], "/")
-			if secondLastSlash != -1 {
-				registry = imageName[:secondLastSlash]
-				imageName = imageName[secondLastSlash+1:]
-			} else {
-				checkRegistry := imageName[:lastSlash]
-				if strings.Contains(checkRegistry, ".") || strings.Contains(checkRegistry, ":") {
-					registry = checkRegistry
-					imageName = imageName[lastSlash+1:]
+		if imageFullName != "none" {
+			reference, err := name.ParseReference(imageFullName)
+			if err == nil {
+				tag := reference.(name.Tag)
+				imageTag = tag.TagStr()
+				registry = tag.RegistryStr()
+				imageName = tag.RepositoryStr()
+				if registry == name.DefaultRegistry {
+					registry = "docker.io"
+					imageName = strings.TrimPrefix(imageName, "library/")
 				}
 			}
 		}
@@ -106,7 +101,7 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 				defer wg.Done()
 				if image.fullName != "none" {
 					// 1. Check tag on semantic version
-					updateStatus, remoteDigest, err := updates.CheckImageUpdateSemantic(image.fullName, logger)
+					updateStatus, remoteDigest, err := updates.CheckImageUpdateSemantic(image.fullName, image.tag, logger)
 					if err != nil {
 						logger.Debug(
 							"error getting semantic version",
