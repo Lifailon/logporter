@@ -1,16 +1,16 @@
 package updates
 
 import (
-	"context"
 	"log/slog"
 	"strings"
 
-	"github.com/docker/docker/client"
+	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
 func CheckImageUpdateDigest(
-	dockerClient *client.Client,
 	imageFullName string,
+	reference name.Reference,
 	currentDigest string,
 	logger *slog.Logger,
 ) (
@@ -18,19 +18,11 @@ func CheckImageUpdateDigest(
 	remoteDigest string,
 	err error,
 ) {
-	imageInspect, err := dockerClient.DistributionInspect(
-		context.Background(),
-		imageFullName,
-		"",
-	)
+	descriptor, err := remote.Head(reference)
 	if err != nil {
-		return 0, imageFullName, err
+		return 0, currentDigest, err
 	}
-	digest := imageInspect.Descriptor.Digest.String()
-	shaIndex := strings.Index(digest, "sha256:")
-	if shaIndex != -1 {
-		digest = digest[shaIndex+7:]
-	}
+	digest := descriptor.Digest.Hex
 	status := 0
 	if !strings.Contains(currentDigest, digest) {
 		status = 1

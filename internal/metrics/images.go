@@ -16,13 +16,14 @@ import (
 )
 
 type imageMetric struct {
-	id       string
-	fullName string
-	name     string
-	tag      string
-	registry string
-	digest   string
-	size     int
+	id        string
+	fullName  string
+	reference name.Reference
+	name      string
+	tag       string
+	registry  string
+	digest    string
+	size      int
 }
 
 type imageUpdateMetrics struct {
@@ -50,8 +51,9 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 		imageName := imageFullName
 		imageTag := "latest"
 		registry := m.Info.defaultRegistry
+		var reference name.Reference
 		if imageFullName != "none" {
-			reference, err := name.ParseReference(imageFullName)
+			reference, err = name.ParseReference(imageFullName)
 			if err == nil {
 				tag := reference.(name.Tag)
 				imageTag = tag.TagStr()
@@ -77,20 +79,21 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 			size = size - sharedSize
 		}
 		data := imageMetric{
-			id:       image.ID,
-			fullName: imageFullName,
-			name:     imageName,
-			tag:      imageTag,
-			registry: registry,
-			digest:   repoDigest,
-			size:     size,
+			id:        image.ID,
+			fullName:  imageFullName,
+			reference: reference,
+			name:      imageName,
+			tag:       imageTag,
+			registry:  registry,
+			digest:    repoDigest,
+			size:      size,
 		}
 		imageMetrics = append(imageMetrics, data)
 	}
 	return imageMetrics, nil
 }
 
-func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *slog.Logger) []imageUpdateMetrics {
+func (m *Metrics) getImagesUpdateMetrics(logger *slog.Logger) []imageUpdateMetrics {
 	if len(m.imageMetrics) > 0 {
 		metrics := make([]imageUpdateMetrics, 0, len(m.imageMetrics))
 		var wg sync.WaitGroup
@@ -110,7 +113,7 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 							"error", err,
 						)
 						// 2. Check tag on digest sha
-						updateStatus, remoteDigest, err = updates.CheckImageUpdateDigest(dockerClient, image.fullName, image.digest, logger)
+						updateStatus, remoteDigest, err = updates.CheckImageUpdateDigest(image.fullName, image.reference, image.digest, logger)
 						if err != nil {
 							logger.Error(
 								"error inspect distribution",
@@ -152,7 +155,7 @@ func (m *Metrics) ImageMetricsWorker(dockerClient *client.Client, logger *slog.L
 			logger.Error("failed to get image metrics", "error", err)
 		}
 	}
-	m.imageUpdateMetrics = m.getImagesUpdateMetrics(dockerClient, logger)
+	m.imageUpdateMetrics = m.getImagesUpdateMetrics(logger)
 	imageCount := len(m.imageMetrics)
 	updateCount := 0
 	for _, image := range m.imageUpdateMetrics {
