@@ -49,7 +49,7 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 		}
 		imageName := imageFullName
 		imageTag := "latest"
-		registry := "docker.io"
+		registry := m.Info.defaultRegistry
 		if imageFullName != "none" {
 			reference, err := name.ParseReference(imageFullName)
 			if err == nil {
@@ -58,7 +58,7 @@ func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, 
 				registry = tag.RegistryStr()
 				imageName = tag.RepositoryStr()
 				if registry == name.DefaultRegistry {
-					registry = "docker.io"
+					registry = m.Info.defaultRegistry
 					imageName = strings.TrimPrefix(imageName, "library/")
 				}
 			}

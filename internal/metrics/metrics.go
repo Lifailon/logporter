@@ -107,7 +107,7 @@ func (m *Metrics) GetDockerInfo(dockerClient *client.Client) *Info {
 		}
 	}
 	info.Hostname = hostname
-	info.defaultRegistry = dockerInfo.IndexServerAddress
+	info.defaultRegistry = strings.TrimPrefix(strings.TrimPrefix(dockerInfo.IndexServerAddress, "http://"), "https://")
 	info.totalMemory = dockerInfo.MemTotal
 	info.numberCPU = dockerInfo.NCPU
 	info.containersRunning = dockerInfo.ContainersRunning
