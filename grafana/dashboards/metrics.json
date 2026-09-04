@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "4e7bc3e2-5217-4aaa-82bd-fe7a5f873c57",
-    "generation": 46,
+    "generation": 59,
     "creationTimestamp": "2026-08-07T17:01:58Z",
     "labels": {},
     "annotations": {}
@@ -139,7 +139,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -362,7 +362,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -496,7 +496,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -630,7 +630,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -765,7 +765,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -899,7 +899,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -1033,7 +1033,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -1167,7 +1167,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -1301,7 +1301,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -1435,7 +1435,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -1936,7 +1936,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineWidth": 0,
                     "spanNulls": false
                   }
@@ -2534,57 +2534,6 @@
           }
         }
       },
-      "panel-58": {
-        "kind": "Panel",
-        "spec": {
-          "id": 58,
-          "title": "🚨 Alerts",
-          "description": "",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "alertlist",
-            "version": "13.1.0",
-            "spec": {
-              "options": {
-                "alertInstanceLabelFilter": "",
-                "alertName": "",
-                "dashboardAlerts": false,
-                "datasource": "prometheus",
-                "groupBy": [
-                  "containerName",
-                  "hostname"
-                ],
-                "groupMode": "custom",
-                "maxItems": 100,
-                "showInactiveAlerts": false,
-                "sortOrder": 1,
-                "stateFilter": {
-                  "error": true,
-                  "firing": true,
-                  "noData": false,
-                  "normal": false,
-                  "pending": true,
-                  "recovering": true
-                },
-                "viewMode": "stat"
-              },
-              "fieldConfig": {
-                "defaults": {},
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
       "panel-59": {
         "kind": "Panel",
         "spec": {
@@ -2634,29 +2583,29 @@
                       "includeByName": {},
                       "indexByName": {
                         "Time": 0,
-                        "Value": 11,
+                        "Value": 10,
                         "__name__": 1,
-                        "digest": 10,
+                        "digest": 8,
                         "hostname": 4,
-                        "imageContainers": 9,
-                        "imageName": 6,
-                        "imageUsage": 8,
+                        "imageContainers": 7,
+                        "imageName": 5,
+                        "imageUsage": 6,
                         "instance": 2,
                         "job": 3,
-                        "registry": 5,
+                        "registry": 9,
                         "remoteVersion": 12,
-                        "tag": 7
+                        "tag": 11
                       },
                       "renameByName": {
                         "Time": "",
-                        "Value": "🆙 Update Required",
+                        "Value": "Status",
                         "hostname": "Hostname",
                         "imageContainers": "Name of containers",
                         "imageName": "Image name",
                         "imageUsage": "Image usage",
                         "registry": "Registry",
                         "remoteVersion": "New version (tag or sha)",
-                        "tag": "Image tag"
+                        "tag": "Current tag version"
                       }
                     }
                   }
@@ -2672,12 +2621,12 @@
             "spec": {
               "options": {
                 "cellHeight": "sm",
+                "enablePagination": false,
                 "showHeader": true,
                 "sortBy": []
               },
               "fieldConfig": {
                 "defaults": {
-                  "unit": "bool_yes_no",
                   "thresholds": {
                     "mode": "absolute",
                     "steps": [
@@ -2699,6 +2648,7 @@
                     "cellOptions": {
                       "type": "auto"
                     },
+                    "filterable": true,
                     "footer": {
                       "reducers": []
                     },
@@ -2717,179 +2667,44 @@
                         "id": "custom.cellOptions",
                         "value": {
                           "applyToRow": true,
-                          "mode": "gradient",
+                          "mode": "basic",
                           "type": "color-background"
                         }
+                      },
+                      {
+                        "id": "mappings",
+                        "value": [
+                          {
+                            "options": {
+                              "0": {
+                                "index": 0,
+                                "text": "No update required"
+                              },
+                              "1": {
+                                "index": 1,
+                                "text": "New version is available"
+                              }
+                            },
+                            "type": "value"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "matcher": {
+                      "id": "byName",
+                      "scope": "series",
+                      "options": "Image usage"
+                    },
+                    "properties": [
+                      {
+                        "id": "unit",
+                        "value": "bool_yes_no"
                       }
                     ]
                   }
                 ]
-              }
-            }
-          }
-        }
-      },
-      "panel-61": {
-        "kind": "Panel",
-        "spec": {
-          "id": 61,
-          "title": "Image updates",
-          "description": "",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "sum(docker_image_update{hostname=~\"$Hostname\"} == bool 1)",
-                        "legendFormat": "__auto",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.1.0",
-            "spec": {
-              "options": {
-                "colorMode": "background",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "text": {},
-                "textMode": "auto",
-                "wideLayout": true
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "none",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "green"
-                      },
-                      {
-                        "value": 1,
-                        "color": "yellow"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds",
-                    "fixedColor": "#ad46ff"
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": []
-              }
-            }
-          }
-        }
-      },
-      "panel-65": {
-        "kind": "Panel",
-        "spec": {
-          "id": 65,
-          "title": "CPU total number",
-          "description": "",
-          "links": [],
-          "data": {
-            "kind": "QueryGroup",
-            "spec": {
-              "queries": [
-                {
-                  "kind": "PanelQuery",
-                  "spec": {
-                    "query": {
-                      "kind": "DataQuery",
-                      "group": "prometheus",
-                      "version": "v0",
-                      "spec": {
-                        "editorMode": "code",
-                        "expr": "docker_cpu_total_number{hostname=~\"$Hostname\"}",
-                        "legendFormat": "__auto",
-                        "range": true
-                      }
-                    },
-                    "refId": "A",
-                    "hidden": false
-                  }
-                }
-              ],
-              "transformations": [],
-              "queryOptions": {}
-            }
-          },
-          "vizConfig": {
-            "kind": "VizConfig",
-            "group": "stat",
-            "version": "13.1.0",
-            "spec": {
-              "options": {
-                "colorMode": "background",
-                "graphMode": "none",
-                "justifyMode": "auto",
-                "orientation": "auto",
-                "percentChangeColorMode": "standard",
-                "reduceOptions": {
-                  "calcs": [
-                    "lastNotNull"
-                  ],
-                  "fields": "",
-                  "values": false
-                },
-                "showPercentChange": false,
-                "text": {},
-                "textMode": "auto",
-                "wideLayout": true
-              },
-              "fieldConfig": {
-                "defaults": {
-                  "unit": "none",
-                  "thresholds": {
-                    "mode": "absolute",
-                    "steps": [
-                      {
-                        "value": 0,
-                        "color": "transparent"
-                      }
-                    ]
-                  },
-                  "color": {
-                    "mode": "thresholds",
-                    "fixedColor": "#ad46ff"
-                  },
-                  "fieldMinMax": false
-                },
-                "overrides": []
               }
             }
           }
@@ -3193,7 +3008,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -3329,7 +3144,7 @@
                       "tooltip": false,
                       "viz": false
                     },
-                    "insertNulls": false,
+                    "insertNulls": 60000,
                     "lineInterpolation": "linear",
                     "lineStyle": {
                       "fill": "solid"
@@ -3535,8 +3350,8 @@
         "kind": "Panel",
         "spec": {
           "id": 74,
-          "title": "Container layers size RW",
-          "description": "",
+          "title": "Container RW layer size",
+          "description": "The size of the final layer in the working container (the space that is not included in volumes and bind mounts).",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -3631,8 +3446,8 @@
         "kind": "Panel",
         "spec": {
           "id": 75,
-          "title": "Container layers size root FS",
-          "description": "",
+          "title": "Container all layers size",
+          "description": "The size of the shared read layers and the last write layer in the working container.",
           "links": [],
           "data": {
             "kind": "QueryGroup",
@@ -4765,11 +4580,96 @@
           }
         }
       },
-      "panel-92": {
+      "panel-94": {
         "kind": "Panel",
         "spec": {
-          "id": 92,
-          "title": "Memory used",
+          "id": 94,
+          "title": "Container updates",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [
+                {
+                  "kind": "PanelQuery",
+                  "spec": {
+                    "query": {
+                      "kind": "DataQuery",
+                      "group": "prometheus",
+                      "version": "v0",
+                      "spec": {
+                        "editorMode": "code",
+                        "expr": "sum(docker_image_update{hostname=~\"$Hostname\",imageUsage!=\"0\"} == bool 1)",
+                        "legendFormat": "__auto",
+                        "range": true
+                      }
+                    },
+                    "refId": "A",
+                    "hidden": false
+                  }
+                }
+              ],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "stat",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "colorMode": "background",
+                "graphMode": "none",
+                "justifyMode": "auto",
+                "orientation": "auto",
+                "percentChangeColorMode": "standard",
+                "reduceOptions": {
+                  "calcs": [
+                    "lastNotNull"
+                  ],
+                  "fields": "",
+                  "values": false
+                },
+                "showPercentChange": false,
+                "text": {},
+                "textMode": "auto",
+                "wideLayout": true
+              },
+              "fieldConfig": {
+                "defaults": {
+                  "unit": "none",
+                  "thresholds": {
+                    "mode": "absolute",
+                    "steps": [
+                      {
+                        "value": 0,
+                        "color": "green"
+                      },
+                      {
+                        "value": 1,
+                        "color": "yellow"
+                      }
+                    ]
+                  },
+                  "color": {
+                    "mode": "thresholds",
+                    "fixedColor": "#ad46ff"
+                  },
+                  "fieldMinMax": false
+                },
+                "overrides": []
+              }
+            }
+          }
+        }
+      },
+      "panel-95": {
+        "kind": "Panel",
+        "spec": {
+          "id": 95,
+          "title": "Memory usage",
           "description": "",
           "links": [],
           "data": {
@@ -4805,7 +4705,7 @@
             "version": "13.1.0",
             "spec": {
               "options": {
-                "colorMode": "background",
+                "colorMode": "value",
                 "graphMode": "none",
                 "justifyMode": "auto",
                 "orientation": "auto",
@@ -4846,10 +4746,10 @@
           }
         }
       },
-      "panel-93": {
+      "panel-96": {
         "kind": "Panel",
         "spec": {
-          "id": 93,
+          "id": 96,
           "title": "Memory total",
           "description": "",
           "links": [],
@@ -4886,7 +4786,7 @@
             "version": "13.1.0",
             "spec": {
               "options": {
-                "colorMode": "background",
+                "colorMode": "value",
                 "graphMode": "none",
                 "justifyMode": "auto",
                 "orientation": "auto",
@@ -4926,6 +4826,53 @@
             }
           }
         }
+      },
+      "panel-97": {
+        "kind": "Panel",
+        "spec": {
+          "id": 97,
+          "title": "🚨 Alerts",
+          "description": "",
+          "links": [],
+          "data": {
+            "kind": "QueryGroup",
+            "spec": {
+              "queries": [],
+              "transformations": [],
+              "queryOptions": {}
+            }
+          },
+          "vizConfig": {
+            "kind": "VizConfig",
+            "group": "alertlist",
+            "version": "13.1.0",
+            "spec": {
+              "options": {
+                "alertInstanceLabelFilter": "",
+                "alertName": "",
+                "dashboardAlerts": false,
+                "groupBy": [],
+                "groupMode": "default",
+                "maxItems": 20,
+                "showInactiveAlerts": false,
+                "sortOrder": 1,
+                "stateFilter": {
+                  "error": true,
+                  "firing": true,
+                  "noData": false,
+                  "normal": false,
+                  "pending": true,
+                  "recovering": true
+                },
+                "viewMode": "stat"
+              },
+              "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+              }
+            }
+          }
+        }
       }
     },
     "layout": {
@@ -4946,8 +4893,8 @@
                       "spec": {
                         "x": 0,
                         "y": 0,
-                        "width": 10,
-                        "height": 18,
+                        "width": 12,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-36"
@@ -4957,23 +4904,10 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 10,
-                        "y": 0,
-                        "width": 2,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-65"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
                         "x": 12,
                         "y": 0,
                         "width": 2,
-                        "height": 6,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-32"
@@ -4986,7 +4920,7 @@
                         "x": 14,
                         "y": 0,
                         "width": 2,
-                        "height": 6,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-70"
@@ -4998,59 +4932,7 @@
                       "spec": {
                         "x": 16,
                         "y": 0,
-                        "width": 2,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-88"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 18,
-                        "y": 0,
-                        "width": 2,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-90"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 20,
-                        "y": 0,
-                        "width": 2,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-61"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 22,
-                        "y": 0,
-                        "width": 2,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-58"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 10,
-                        "y": 6,
-                        "width": 2,
+                        "width": 4,
                         "height": 6,
                         "element": {
                           "kind": "ElementReference",
@@ -5061,10 +4943,36 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 12,
-                        "y": 6,
+                        "x": 20,
+                        "y": 0,
                         "width": 2,
-                        "height": 6,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-90"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 22,
+                        "y": 0,
+                        "width": 2,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-88"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 12,
+                        "y": 4,
+                        "width": 2,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-12"
@@ -5075,9 +4983,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 14,
-                        "y": 6,
+                        "y": 4,
                         "width": 2,
-                        "height": 6,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-72"
@@ -5087,23 +4995,10 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 16,
-                        "y": 6,
+                        "x": 20,
+                        "y": 4,
                         "width": 2,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-89"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 18,
-                        "y": 6,
-                        "width": 2,
-                        "height": 6,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-91"
@@ -5113,36 +5008,23 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 20,
-                        "y": 6,
-                        "width": 2,
-                        "height": 12,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-39"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
                         "x": 22,
-                        "y": 6,
+                        "y": 4,
                         "width": 2,
-                        "height": 12,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-35"
+                          "name": "panel-89"
                         }
                       }
                     },
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 10,
-                        "y": 12,
-                        "width": 2,
-                        "height": 6,
+                        "x": 16,
+                        "y": 6,
+                        "width": 4,
+                        "height": 5,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-55"
@@ -5153,12 +5035,12 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 12,
-                        "y": 12,
+                        "y": 8,
                         "width": 2,
-                        "height": 6,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-92"
+                          "name": "panel-39"
                         }
                       }
                     },
@@ -5166,35 +5048,22 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 14,
-                        "y": 12,
+                        "y": 8,
                         "width": 2,
-                        "height": 6,
+                        "height": 8,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-93"
+                          "name": "panel-35"
                         }
                       }
                     },
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
-                        "x": 16,
-                        "y": 12,
+                        "x": 20,
+                        "y": 8,
                         "width": 2,
-                        "height": 6,
-                        "element": {
-                          "kind": "ElementReference",
-                          "name": "panel-56"
-                        }
-                      }
-                    },
-                    {
-                      "kind": "GridLayoutItem",
-                      "spec": {
-                        "x": 18,
-                        "y": 12,
-                        "width": 2,
-                        "height": 6,
+                        "height": 4,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-54"
@@ -5204,10 +5073,75 @@
                     {
                       "kind": "GridLayoutItem",
                       "spec": {
+                        "x": 22,
+                        "y": 8,
+                        "width": 2,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-56"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 16,
+                        "y": 11,
+                        "width": 2,
+                        "height": 5,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-95"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 18,
+                        "y": 11,
+                        "width": 2,
+                        "height": 5,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-96"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 20,
+                        "y": 12,
+                        "width": 2,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-94"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
+                        "x": 22,
+                        "y": 12,
+                        "width": 2,
+                        "height": 4,
+                        "element": {
+                          "kind": "ElementReference",
+                          "name": "panel-97"
+                        }
+                      }
+                    },
+                    {
+                      "kind": "GridLayoutItem",
+                      "spec": {
                         "x": 0,
-                        "y": 18,
+                        "y": 16,
                         "width": 12,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-1"
@@ -5218,9 +5152,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 12,
-                        "y": 18,
+                        "y": 16,
                         "width": 12,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-69"
@@ -5231,9 +5165,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 0,
-                        "y": 33,
+                        "y": 32,
                         "width": 12,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-23"
@@ -5244,9 +5178,9 @@
                       "kind": "GridLayoutItem",
                       "spec": {
                         "x": 12,
-                        "y": 33,
+                        "y": 32,
                         "width": 12,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-7"
@@ -5259,7 +5193,7 @@
                         "x": 0,
                         "y": 48,
                         "width": 6,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-17"
@@ -5272,7 +5206,7 @@
                         "x": 6,
                         "y": 48,
                         "width": 6,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-18"
@@ -5285,7 +5219,7 @@
                         "x": 12,
                         "y": 48,
                         "width": 6,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-15"
@@ -5298,7 +5232,7 @@
                         "x": 18,
                         "y": 48,
                         "width": 6,
-                        "height": 15,
+                        "height": 16,
                         "element": {
                           "kind": "ElementReference",
                           "name": "panel-16"
@@ -5340,7 +5274,7 @@
             "kind": "RowsLayoutRow",
             "spec": {
               "title": "Updates",
-              "collapse": true,
+              "collapse": false,
               "layout": {
                 "kind": "AutoGridLayout",
                 "spec": {
@@ -5366,7 +5300,7 @@
             "kind": "RowsLayoutRow",
             "spec": {
               "title": "Storage",
-              "collapse": false,
+              "collapse": true,
               "layout": {
                 "kind": "GridLayout",
                 "spec": {
@@ -5380,7 +5314,7 @@
                         "height": 13,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-67"
+                          "name": "panel-52"
                         }
                       }
                     },
@@ -5393,7 +5327,7 @@
                         "height": 13,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-68"
+                          "name": "panel-86"
                         }
                       }
                     },
@@ -5432,7 +5366,7 @@
                         "height": 13,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-52"
+                          "name": "panel-67"
                         }
                       }
                     },
@@ -5445,7 +5379,7 @@
                         "height": 13,
                         "element": {
                           "kind": "ElementReference",
-                          "name": "panel-86"
+                          "name": "panel-68"
                         }
                       }
                     },
