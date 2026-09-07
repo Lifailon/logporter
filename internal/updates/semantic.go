@@ -1,10 +1,12 @@
 package updates
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -21,7 +23,9 @@ func getRemoteTagList(image string) []string {
 	if err != nil {
 		return nil
 	}
-	remoteTags, err := remote.List(repositoryName)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	remoteTags, err := remote.List(repositoryName, remote.WithContext(ctx))
 	if err != nil {
 		return nil
 	}

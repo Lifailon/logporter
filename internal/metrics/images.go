@@ -169,7 +169,9 @@ func getRemoteCreatedTime(imageFullName, remoteDigest string, isDigest bool, log
 		logger.Error("failed to parse remote reference for remote build date", "image", remoteRef, "error", err)
 		return 0
 	}
-	remoteImage, err := remote.Image(parsedRef)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	remoteImage, err := remote.Image(parsedRef, remote.WithContext(ctx))
 	if err != nil {
 		logger.Error("failed to get remote image for remote build date", "image", remoteRef, "error", err)
 		return 0
@@ -179,7 +181,7 @@ func getRemoteCreatedTime(imageFullName, remoteDigest string, isDigest bool, log
 		logger.Error("failed to get remote image config for remote build date", "image", remoteRef, "error", err)
 		return 0
 	}
-	return configFile.Created.Time.Unix()
+	return configFile.Created.Unix()
 }
 
 func (m *Metrics) ImageMetricsWorker(dockerClient *client.Client, logger *slog.Logger) {
