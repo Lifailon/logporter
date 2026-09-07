@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -252,6 +253,19 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = fmt.Fprintln(w, html)
+	})
+
+	// Endpoint: /api/dashboard/refresh
+	httpServerMux.HandleFunc("/api/dashboard/refresh", func(w http.ResponseWriter, r *http.Request) {
+		refreshMetrics(r.Context())
+		Refresh, err := dashboard.Refresh(exporter.DashboardData())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = fmt.Fprintln(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(Refresh)
 	})
 
 	// Endpoint: /health

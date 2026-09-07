@@ -31,7 +31,6 @@ type Summary struct {
 	Stopped     int
 	Updates     int
 	Volumes     int
-	Refresh     int
 	ShowUpdates bool
 }
 
@@ -140,4 +139,22 @@ func Render(data Data) (template.HTML, error) {
 		return "", err
 	}
 	return template.HTML(buf.String()), nil
+}
+
+func Refresh(data Data) (map[string]template.HTML, error) {
+	fragments := map[string]string{
+		"cards":      "cards",
+		"containers": "rowsContainers",
+		"images":     "rowsImages",
+		"volumes":    "rowsVolumes",
+	}
+	out := make(map[string]template.HTML, len(fragments))
+	for key, name := range fragments {
+		var buf bytes.Buffer
+		if err := tmpl.ExecuteTemplate(&buf, name, data); err != nil {
+			return nil, err
+		}
+		out[key] = template.HTML(buf.String())
+	}
+	return out, nil
 }

@@ -46,7 +46,6 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		Stopped:     stopped,
 		Volumes:     len(m.volumeMetrics),
 		Updates:     updateCount(m.imageUpdateMetrics),
-		Refresh:     30,
 		ShowUpdates: m.GetImageUpdateMetrics,
 	}
 
