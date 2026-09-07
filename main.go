@@ -212,6 +212,20 @@ func main() {
 		}
 	})
 
+	// Endpoint: /health
+	httpServerMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		_, err := dockerClient.Ping(ctx)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = fmt.Fprintln(w, "docker daemon is unavailable")
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = fmt.Fprintln(w, "ok")
+	})
+
 	logSrv := loggingMiddleware(exporter, httpServerMux, logger)
 
 	// Start HTTP server
