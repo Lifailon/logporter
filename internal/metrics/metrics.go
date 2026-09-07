@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -460,7 +461,7 @@ func (m *Metrics) GetMetrics(ctx context.Context, dockerClient *client.Client, h
 				"imageName=\"%s\","+
 				"tag=\"%s\","+
 				"registry=\"%s\","+
-				"createdDate=\"%d\","+
+				"createdTime=\"%d\","+
 				"digest=\"%s\","+
 				"imageUsage=\"%d\","+
 				"imageContainers=\"%s\","+
@@ -487,13 +488,18 @@ func (m *Metrics) GetMetrics(ctx context.Context, dockerClient *client.Client, h
 		for _, image := range m.imageUpdateMetrics {
 			imageUsage := len(m.imageUsage[image.id])
 			imageContainers := strings.Join(m.imageUsage[image.id], ",")
+			remoteTime := ""
+			if image.remoteTime != 0 {
+				remoteTime = strconv.FormatInt(image.remoteTime, 10)
+				// remoteTime = fmt.Sprintf("%d", image.remoteTime)
+			}
 			metricText := fmt.Sprintf(
 				"docker_image_update{"+
 					"imageName=\"%s\","+
 					"tag=\"%s\","+
 					"registry=\"%s\","+
-					"createdDate=\"%d\","+
-					"remoteDate=\"%d\","+
+					"createdTime=\"%d\","+
+					"remoteTime=\"%s\","+
 					"digest=\"%s\","+
 					"remoteVersion=\"%s\","+
 					"imageUsage=\"%d\","+
@@ -504,7 +510,7 @@ func (m *Metrics) GetMetrics(ctx context.Context, dockerClient *client.Client, h
 				image.tag,
 				image.registry,
 				image.createdTime,
-				image.remoteTime,
+				remoteTime,
 				image.digest,
 				image.remoteVersion,
 				imageUsage,
