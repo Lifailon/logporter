@@ -3,7 +3,7 @@
   "kind": "Dashboard",
   "metadata": {
     "name": "4e7bc3e2-5217-4aaa-82bd-fe7a5f873c57",
-    "generation": 59,
+    "generation": 65,
     "creationTimestamp": "2026-08-07T17:01:58Z",
     "labels": {},
     "annotations": {}
@@ -75,7 +75,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -204,7 +204,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -300,7 +300,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -434,7 +434,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -568,7 +568,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -702,7 +702,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -1105,7 +1105,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -1500,7 +1500,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -1599,7 +1599,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -1682,7 +1682,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "bargauge",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "displayMode": "basic",
@@ -1801,7 +1801,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -1984,7 +1984,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -2268,7 +2268,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -2349,7 +2349,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -2440,7 +2440,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -2502,7 +2502,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "alertlist",
-            "version": "13.1.0",
+            "version": "13.1.1",
             "spec": {
               "options": {
                 "alertInstanceLabelFilter": "",
@@ -2516,6 +2516,21 @@
                 "maxItems": 20,
                 "showInactiveAlerts": false,
                 "sortOrder": 1,
+                "statColorMode": "none",
+                "statThresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "statValueMappings": [],
                 "stateFilter": {
                   "error": true,
                   "firing": true,
@@ -2575,6 +2590,7 @@
                     "options": {
                       "excludeByName": {
                         "Time": true,
+                        "Value": false,
                         "__name__": true,
                         "digest": true,
                         "instance": true,
@@ -2583,8 +2599,9 @@
                       "includeByName": {},
                       "indexByName": {
                         "Time": 0,
-                        "Value": 10,
+                        "Value": 12,
                         "__name__": 1,
+                        "createdTime": 10,
                         "digest": 8,
                         "hostname": 4,
                         "imageContainers": 7,
@@ -2593,20 +2610,46 @@
                         "instance": 2,
                         "job": 3,
                         "registry": 9,
-                        "remoteVersion": 12,
-                        "tag": 11
+                        "remoteTime": 11,
+                        "remoteVersion": 14,
+                        "tag": 13
                       },
                       "renameByName": {
                         "Time": "",
                         "Value": "Status",
+                        "createdDate": "Created date",
+                        "createdTime": "Сreated time",
                         "hostname": "Hostname",
                         "imageContainers": "Name of containers",
                         "imageName": "Image name",
                         "imageUsage": "Image usage",
                         "registry": "Registry",
+                        "remoteDate": "Remote date",
+                        "remoteTime": "Remote time",
                         "remoteVersion": "New version (tag or sha)",
                         "tag": "Current tag version"
                       }
+                    }
+                  }
+                },
+                {
+                  "kind": "Transformation",
+                  "group": "convertFieldType",
+                  "spec": {
+                    "options": {
+                      "conversions": [
+                        {
+                          "dateFormat": "X",
+                          "destinationType": "time",
+                          "targetField": "createdTime"
+                        },
+                        {
+                          "dateFormat": "X",
+                          "destinationType": "time",
+                          "targetField": "remoteTime"
+                        }
+                      ],
+                      "fields": {}
                     }
                   }
                 }
@@ -2617,7 +2660,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "table",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "cellHeight": "sm",
@@ -2944,7 +2987,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -3080,7 +3123,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "timeseries",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "annotations": {
@@ -3192,7 +3235,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(docker_container_healthy{hostname=~\"$Hostname\"} == 1)",
+                        "expr": "sum(docker_container_healthy{hostname=~\"$Hostname\"} == 1) or vector(0)",
                         "legendFormat": "__auto",
                         "range": true
                       }
@@ -3209,7 +3252,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -3294,7 +3337,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -4277,7 +4320,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -4362,7 +4405,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -4447,7 +4490,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -4532,7 +4575,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -4617,7 +4660,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "background",
@@ -4702,7 +4745,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -4766,7 +4809,7 @@
                       "version": "v0",
                       "spec": {
                         "editorMode": "code",
-                        "expr": "sum(docker_memory_total{hostname=~\"$Hostname\"})",
+                        "expr": "docker_memory_total{hostname=~\"$Hostname\"}",
                         "legendFormat": "__auto",
                         "range": true
                       }
@@ -4783,7 +4826,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "stat",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "colorMode": "value",
@@ -4796,7 +4839,8 @@
                     "lastNotNull"
                   ],
                   "fields": "",
-                  "values": false
+                  "limit": 1,
+                  "values": true
                 },
                 "showPercentChange": false,
                 "text": {},
@@ -4845,7 +4889,7 @@
           "vizConfig": {
             "kind": "VizConfig",
             "group": "alertlist",
-            "version": "13.1.0",
+            "version": "13.2.1",
             "spec": {
               "options": {
                 "alertInstanceLabelFilter": "",
@@ -4856,6 +4900,21 @@
                 "maxItems": 20,
                 "showInactiveAlerts": false,
                 "sortOrder": 1,
+                "statColorMode": "none",
+                "statThresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": 0
+                    },
+                    {
+                      "color": "red",
+                      "value": 80
+                    }
+                  ]
+                },
+                "statValueMappings": [],
                 "stateFilter": {
                   "error": true,
                   "firing": true,

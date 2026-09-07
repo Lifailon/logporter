@@ -18,7 +18,7 @@ Clone the repository and run the monitoring full-stack with one command:
 ```bash
 git clone https://github.com/Lifailon/logporter
 cd logporter
-docker-compose up -d
+docker-compose up -d --pull always
 ```
 
 The stack includes Prometheus with an exporter connected and alerts configured, a Loki server targeted by a log collector, and Grafana with pre-configured data sources and added dashboards.
