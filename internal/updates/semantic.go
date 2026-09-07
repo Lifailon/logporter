@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/Masterminds/semver/v3"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -18,13 +17,11 @@ type versions struct {
 	rawVersion string
 }
 
-func getRemoteTagList(image string) []string {
+func getRemoteTagList(ctx context.Context, image string) []string {
 	repositoryName, err := name.NewRepository(image)
 	if err != nil {
 		return nil
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 	remoteTags, err := remote.List(repositoryName, remote.WithContext(ctx))
 	if err != nil {
 		return nil
@@ -33,6 +30,7 @@ func getRemoteTagList(image string) []string {
 }
 
 func CheckImageUpdateSemantic(
+	ctx context.Context,
 	imageFullName,
 	imageTag string,
 	logger *slog.Logger,
@@ -49,7 +47,7 @@ func CheckImageUpdateSemantic(
 		return 0, "", fmt.Errorf("current tag is not semantic")
 	}
 	// Filtering non-semantic tags in remote registry
-	tagList := getRemoteTagList(imageName)
+	tagList := getRemoteTagList(ctx, imageName)
 	var tags []versions
 	for _, tag := range tagList {
 		semVer, err := semver.NewVersion(tag)

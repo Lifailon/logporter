@@ -94,10 +94,10 @@ type InspectMetric struct {
 }
 
 // Get general metrics and hostname from Docker Info or OS
-func (m *Metrics) GetDockerInfo(dockerClient *client.Client) *Info {
+func (m *Metrics) GetDockerInfo(ctx context.Context, dockerClient *client.Client) *Info {
 	info := Info{}
 	hostname := "none"
-	dockerInfo, err := dockerClient.Info(context.Background())
+	dockerInfo, err := dockerClient.Info(ctx)
 	if err == nil {
 		hostname = dockerInfo.Name
 	} else {
@@ -117,8 +117,8 @@ func (m *Metrics) GetDockerInfo(dockerClient *client.Client) *Info {
 }
 
 // Get information about all containers (second param to get all or only started containers)
-func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *slog.Logger) (map[string]*Labels, []string) {
-	containers, err := dockerClient.ContainerList(context.Background(), container.ListOptions{All: All})
+func (m *Metrics) getContainers(ctx context.Context, dockerClient *client.Client, All bool, logger *slog.Logger) (map[string]*Labels, []string) {
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{All: All})
 	if err != nil {
 		logger.Error("failed to get container list", "error", err)
 		return nil, nil
@@ -183,8 +183,8 @@ func (m *Metrics) getContainers(dockerClient *client.Client, All bool, logger *s
 }
 
 // Get metric list for specified container by id
-func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger *slog.Logger) *BaseMetrics {
-	stats, err := dockerClient.ContainerStatsOneShot(context.Background(), id)
+func (m *Metrics) getBaseMetrics(ctx context.Context, dockerClient *client.Client, id string, logger *slog.Logger) *BaseMetrics {
+	stats, err := dockerClient.ContainerStatsOneShot(ctx, id)
 	if err != nil {
 		logger.Error("failed to get container stats", "error", err)
 		return nil
@@ -316,9 +316,9 @@ func (m *Metrics) getBaseMetrics(dockerClient *client.Client, id string, logger 
 }
 
 // Get metrics from inspect method
-func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric, logger *slog.Logger) {
+func (m *Metrics) getInspectMetrics(ctx context.Context, dockerClient *client.Client, id string, wg *sync.WaitGroup, results chan *InspectMetric, logger *slog.Logger) {
 	defer wg.Done()
-	inspectData, _, err := dockerClient.ContainerInspectWithRaw(context.Background(), id, true)
+	inspectData, _, err := dockerClient.ContainerInspectWithRaw(ctx, id, true)
 	if err != nil {
 		logger.Error("failed to inspect container", "error", err)
 		return
@@ -384,9 +384,9 @@ func (m *Metrics) getInspectMetrics(dockerClient *client.Client, id string, wg *
 }
 
 // Main function for getting metrics
-func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
+func (m *Metrics) GetMetrics(ctx context.Context, dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
 	// Get a list of containers with status information and all container ID array
-	m.Labels, m.idRunning = m.getContainers(dockerClient, true, logger)
+	m.Labels, m.idRunning = m.getContainers(ctx, dockerClient, true, logger)
 
 	// Create a waiting group and a buffered channel to store data from goroutines
 	var wg sync.WaitGroup
@@ -397,7 +397,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	for _, id := range m.idRunning {
 		go func(containerID string) {
 			defer wg.Done()
-			res := m.getBaseMetrics(dockerClient, containerID, logger)
+			res := m.getBaseMetrics(ctx, dockerClient, containerID, logger)
 			results <- res
 		}(id)
 	}
@@ -425,7 +425,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 	inspectData := make(chan *InspectMetric, len(allID))
 
 	for _, id := range allID {
-		go m.getInspectMetrics(dockerClient, id, &wg, inspectData, logger)
+		go m.getInspectMetrics(ctx, dockerClient, id, &wg, inspectData, logger)
 	}
 
 	wg.Wait()
@@ -444,7 +444,7 @@ func (m *Metrics) GetMetrics(dockerClient *client.Client, hostname string, logge
 
 	// #12 Get image metrics
 	var err error
-	m.imageMetrics, err = m.getImagesMetrics(dockerClient)
+	m.imageMetrics, err = m.getImagesMetrics(ctx, dockerClient)
 	if err != nil {
 		logger.Error("failed to get image metrics", "error", err)
 	}

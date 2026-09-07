@@ -16,9 +16,9 @@ type volumeMetric struct {
 	usage  int64
 }
 
-func (m *Metrics) getVolumesMetrics(dockerClient *client.Client) ([]volumeMetric, error) {
+func (m *Metrics) getVolumesMetrics(ctx context.Context, dockerClient *client.Client) ([]volumeMetric, error) {
 	diskOptions := types.DiskUsageOptions{}
-	diskUsage, err := dockerClient.DiskUsage(context.Background(), diskOptions)
+	diskUsage, err := dockerClient.DiskUsage(ctx, diskOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,9 @@ func (m *Metrics) getVolumesMetrics(dockerClient *client.Client) ([]volumeMetric
 
 func (m *Metrics) VolumesMetricsWorker(dockerClient *client.Client, logger *slog.Logger) {
 	start := time.Now()
-	volumeMetrics, err := m.getVolumesMetrics(dockerClient)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	volumeMetrics, err := m.getVolumesMetrics(ctx, dockerClient)
 	if err != nil {
 		logger.Error("error getting volume list", "error", err)
 	}

@@ -6,8 +6,10 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/docker/docker/client"
@@ -87,7 +89,9 @@ func main() {
 		}
 	}
 
-	exporter.Info = exporter.GetDockerInfo(dockerClient)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	exporter.Info = exporter.GetDockerInfo(ctx, dockerClient)
+	cancel()
 	hostname = exporter.Info.Hostname
 	envHostname := os.Getenv("DOCKER_METRICS_HOSTNAME")
 	if envHostname != "" {
@@ -171,13 +175,14 @@ func main() {
 		}()
 	}
 
+	var lokiCancel context.CancelFunc
 	lokiClient := logs.NewClient(logger)
 	if lokiClient != nil {
 		lokiClient.Start()
 		defer lokiClient.Stop()
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		go logs.Run(ctx, dockerClient, lokiClient, logger, hostname)
+		var lokiCtx context.Context
+		lokiCtx, lokiCancel = context.WithCancel(context.Background())
+		go logs.Run(lokiCtx, dockerClient, lokiClient, logger, hostname)
 		logger.Info("log collection and sending to Loki is enabled", "url", lokiClient.URL)
 	}
 
@@ -199,7 +204,9 @@ func main() {
 			metricsData = exporter.CacheData
 			exporter.CacheMutex.RUnlock()
 		} else {
-			metricsData = exporter.GetMetrics(dockerClient, hostname, logger)
+			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+			defer cancel()
+			metricsData = exporter.GetMetrics(ctx, dockerClient, hostname, logger)
 			exporter.CacheMutex.Lock()
 			exporter.CacheData = metricsData
 			exporter.CacheTime = time.Now()
@@ -229,10 +236,27 @@ func main() {
 	logSrv := loggingMiddleware(exporter, httpServerMux, logger)
 
 	// Start HTTP server
-	logger.Info("exporter started", "port", port)
-	err = http.ListenAndServe(":"+port, logSrv)
-	if err != nil {
-		logger.Error("failed to start HTTP server", "error", err)
-		os.Exit(1)
+	httpServer := &http.Server{
+		Addr:    ":" + port,
+		Handler: logSrv,
 	}
+	logger.Info("exporter started", "port", port)
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("failed to start HTTP server", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Graceful shutdown on signal
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	<-stop
+	if lokiCancel != nil {
+		lokiCancel()
+	}
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+	_ = httpServer.Shutdown(shutdownCtx)
+	logger.Info("exporter stopped")
 }

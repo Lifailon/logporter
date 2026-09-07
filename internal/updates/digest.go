@@ -9,6 +9,7 @@ import (
 )
 
 func CheckImageUpdateDigest(
+	ctx context.Context,
 	dockerClient *client.Client,
 	imageFullName string,
 	currentDigest string,
@@ -19,7 +20,7 @@ func CheckImageUpdateDigest(
 	err error,
 ) {
 	imageInspect, err := dockerClient.DistributionInspect(
-		context.Background(),
+		ctx,
 		imageFullName,
 		"",
 	)

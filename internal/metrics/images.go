@@ -39,10 +39,10 @@ type imageUpdateMetrics struct {
 	updateStatus  int
 }
 
-func (m *Metrics) getImagesMetrics(dockerClient *client.Client) ([]imageMetric, error) {
+func (m *Metrics) getImagesMetrics(ctx context.Context, dockerClient *client.Client) ([]imageMetric, error) {
 	var imageMetrics []imageMetric
 	imageOptions := image.ListOptions{SharedSize: true}
-	images, err := dockerClient.ImageList(context.Background(), imageOptions)
+	images, err := dockerClient.ImageList(ctx, imageOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error getting image list: %v", err)
 	}
@@ -106,8 +106,10 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 			go func(image imageMetric) {
 				defer wg.Done()
 				if image.fullName != "none" {
+					ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+					defer cancel()
 					// 1. Check tag on semantic version
-					updateStatus, remoteDigest, err := updates.CheckImageUpdateSemantic(image.fullName, image.tag, logger)
+					updateStatus, remoteDigest, err := updates.CheckImageUpdateSemantic(ctx, image.fullName, image.tag, logger)
 					isDigest := false
 					if err != nil {
 						logger.Debug(
@@ -118,7 +120,7 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 						)
 						// 2. Check tag on digest sha
 						isDigest = true
-						updateStatus, remoteDigest, err = updates.CheckImageUpdateDigest(dockerClient, image.fullName, image.digest, logger)
+						updateStatus, remoteDigest, err = updates.CheckImageUpdateDigest(ctx, dockerClient, image.fullName, image.digest, logger)
 						if err != nil {
 							logger.Error(
 								"error inspect distribution",
@@ -129,7 +131,7 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 							return
 						}
 					}
-					remoteDate := getRemoteCreatedTime(image.fullName, remoteDigest, isDigest, logger)
+					remoteDate := getRemoteCreatedTime(ctx, image.fullName, remoteDigest, isDigest, logger)
 					mu.Lock()
 					updateMetrics := imageUpdateMetrics{
 						id:            image.id,
@@ -154,7 +156,7 @@ func (m *Metrics) getImagesUpdateMetrics(dockerClient *client.Client, logger *sl
 	}
 }
 
-func getRemoteCreatedTime(imageFullName, remoteDigest string, isDigest bool, logger *slog.Logger) int64 {
+func getRemoteCreatedTime(ctx context.Context, imageFullName, remoteDigest string, isDigest bool, logger *slog.Logger) int64 {
 	ref, err := name.ParseReference(imageFullName)
 	if err != nil {
 		logger.Error("failed to parse image reference for remote build date", "image", imageFullName, "error", err)
@@ -169,8 +171,6 @@ func getRemoteCreatedTime(imageFullName, remoteDigest string, isDigest bool, log
 		logger.Error("failed to parse remote reference for remote build date", "image", remoteRef, "error", err)
 		return 0
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
 	remoteImage, err := remote.Image(parsedRef, remote.WithContext(ctx))
 	if err != nil {
 		logger.Error("failed to get remote image for remote build date", "image", remoteRef, "error", err)
@@ -186,9 +186,11 @@ func getRemoteCreatedTime(imageFullName, remoteDigest string, isDigest bool, log
 
 func (m *Metrics) ImageMetricsWorker(dockerClient *client.Client, logger *slog.Logger) {
 	start := time.Now()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 	if len(m.imageMetrics) == 0 {
 		var err error
-		m.imageMetrics, err = m.getImagesMetrics(dockerClient)
+		m.imageMetrics, err = m.getImagesMetrics(ctx, dockerClient)
 		if err != nil {
 			logger.Error("failed to get image metrics", "error", err)
 		}
