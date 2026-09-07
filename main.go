@@ -57,6 +57,24 @@ func logLevelParse(level string) slog.Level {
 }
 
 func main() {
+	// Health check on /health endpoint using built-in probe for scratch image
+	if len(os.Args) > 1 && os.Args[1] == "--healthcheck" {
+		port := os.Getenv("DOCKER_METRICS_PORT")
+		if port == "" {
+			port = "9333"
+		}
+		client := &http.Client{Timeout: 5 * time.Second}
+		response, err := client.Get("http://localhost:" + port + "/health")
+		if err != nil {
+			os.Exit(1)
+		}
+		defer func() { _ = response.Body.Close() }()
+		if response.StatusCode != http.StatusOK {
+			os.Exit(1)
+		}
+		return
+	}
+
 	// Get environment variables
 	envLogLevel := os.Getenv("LOG_LEVEL")
 	logLevel := logLevelParse(strings.ToLower(envLogLevel))
