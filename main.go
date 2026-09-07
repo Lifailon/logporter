@@ -14,6 +14,7 @@ import (
 
 	"github.com/docker/docker/client"
 
+	"logporter/internal/dashboard"
 	"logporter/internal/logs"
 	"logporter/internal/metrics"
 )
@@ -207,34 +208,50 @@ func main() {
 	// Create HTTP server
 	httpServerMux := http.NewServeMux()
 
-	// Endpoint: /metrics
-	httpServerMux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-
+	// The local function returns the current metrics for the exporter and Dashboard
+	refreshMetrics := func(ctx context.Context) []string {
 		// #10 Using cache
 		exporter.CacheMutex.RLock()
 		exporter.CacheValid = len(exporter.CacheData) > 0 && time.Since(exporter.CacheTime) < exporter.CacheTTL
 		exporter.CacheMutex.RUnlock()
 
-		var metricsData []string
 		if exporter.CacheValid {
 			exporter.CacheMutex.RLock()
-			metricsData = exporter.CacheData
+			metricsData := exporter.CacheData
 			exporter.CacheMutex.RUnlock()
-		} else {
-			ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
-			defer cancel()
-			metricsData = exporter.GetMetrics(ctx, dockerClient, hostname, logger)
-			exporter.CacheMutex.Lock()
-			exporter.CacheData = metricsData
-			exporter.CacheTime = time.Now()
-			exporter.CacheMutex.Unlock()
+			return metricsData
 		}
 
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
+		metricsData := exporter.GetMetrics(ctx, dockerClient, hostname, logger)
+		exporter.CacheMutex.Lock()
+		exporter.CacheData = metricsData
+		exporter.CacheTime = time.Now()
+		exporter.CacheMutex.Unlock()
+		return metricsData
+	}
+
+	// Endpoint: /metrics
+	httpServerMux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 		// Output metrics in Prometheus format
-		for _, m := range metricsData {
+		for _, m := range refreshMetrics(r.Context()) {
 			_, _ = fmt.Fprintln(w, m)
 		}
+	})
+
+	// Endpoint: /dashboard
+	httpServerMux.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
+		refreshMetrics(r.Context())
+		html, err := dashboard.Render(exporter.DashboardData())
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = fmt.Fprintln(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = fmt.Fprintln(w, html)
 	})
 
 	// Endpoint: /health

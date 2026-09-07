@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="{{.Summary.Refresh}}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{.Summary.Title}}</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --border: #2a2f3a;
+        --text: #e6e9ef;
+        --muted: #8b93a1;
+        --green: #2ecc71;
+        --red: #e74c3c;
+        --orange: #f39c12;
+        --blue: #3498db;
+        --gray: #7f8c8d;
+        --thead: #1d212b;
+        --row-hover: #1b1f29;
+      }
+      :root[data-theme="light"] {
+        --bg: #f4f6f9;
+        --panel: #ffffff;
+        --border: #d8dde5;
+        --text: #1f2430;
+        --muted: #5b6472;
+        --green: #1e8e4e;
+        --red: #c9372c;
+        --orange: #b06a00;
+        --blue: #1d6fb8;
+        --gray: #5b6472;
+        --thead: #eceff4;
+        --row-hover: #f0f3f8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          14px/1.55 "Segoe UI",
+          system-ui,
+          -apple-system,
+          sans-serif;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        background: var(--panel);
+        border-bottom: 1px solid var(--border);
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        z-index: 10;
+      }
+      header h1 {
+        font-size: 18px;
+        margin: 0;
+      }
+      header .sub {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      header .spacer {
+        flex: 1;
+      }
+      .theme-btn {
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 14px;
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        transition:
+          border-color 0.2s,
+          background 0.2s,
+          color 0.2s;
+      }
+      .theme-btn:hover {
+        border-color: var(--blue);
+      }
+      select.theme-btn option {
+        background: var(--panel);
+        color: var(--text);
+      }
+      #backTop {
+        position: fixed;
+        right: 18px;
+        bottom: 18px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        font-size: 18px;
+        cursor: pointer;
+        z-index: 20;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(8px);
+        transition:
+          opacity 0.2s,
+          transform 0.2s,
+          visibility 0.2s;
+      }
+      #backTop.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+      #backTop:hover {
+        border-color: var(--blue);
+      }
+      main {
+        padding: 20px;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .cards + .cards {
+        margin-top: 12px;
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+      }
+      .card .label {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .card .value {
+        font-size: 26px;
+        font-weight: 600;
+        margin-top: 4px;
+      }
+      .card .value.green {
+        color: var(--green);
+      }
+      .card .value.red {
+        color: var(--red);
+      }
+      .card .value.orange {
+        color: var(--orange);
+      }
+      .card .value.blue {
+        color: var(--blue);
+      }
+      .card .value.hostname {
+        font-size: 18px;
+        font-weight: 600;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+      }
+      select.theme-btn {
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        padding: 7px 10px;
+        text-align: center;
+        cursor: pointer;
+      }
+      h2 {
+        font-size: 16px;
+        margin: 28px 0 10px;
+        color: var(--blue);
+      }
+      .table-wrap {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow-x: auto;
+        background: var(--panel);
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+      .search {
+        flex: 1;
+        min-width: 0;
+        max-width: 320px;
+        padding: 6px 12px;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font: inherit;
+      }
+      .search:focus {
+        outline: none;
+        border-color: var(--blue);
+      }
+      table {
+        width: 100%;
+        min-width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+        vertical-align: middle;
+      }
+      th {
+        background: var(--thead);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+      th.sortable {
+        cursor: pointer;
+        user-select: none;
+      }
+      th.sortable.asc::after {
+        content: " ▲";
+        font-size: 10px;
+      }
+      th.sortable.desc::after {
+        content: " ▼";
+        font-size: 10px;
+      }
+      th:hover {
+        color: var(--text);
+      }
+      tbody tr:last-child td {
+        border-bottom: none;
+      }
+      tbody tr:hover {
+        background: var(--row-hover);
+      }
+      .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .badge-running {
+        background: rgba(46, 204, 113, 0.15);
+        color: var(--green);
+      }
+      .badge-exited,
+      .badge-dead {
+        background: rgba(231, 76, 60, 0.15);
+        color: var(--red);
+      }
+      .badge-created,
+      .badge-paused {
+        background: rgba(127, 140, 141, 0.15);
+        color: var(--gray);
+      }
+      .badge-restarting {
+        background: rgba(243, 156, 18, 0.15);
+        color: var(--orange);
+      }
+      .badge-ok {
+        background: rgba(46, 204, 113, 0.15);
+        color: var(--green);
+      }
+      .badge-update {
+        background: rgba(243, 156, 18, 0.15);
+        color: var(--orange);
+      }
+      .badge-other {
+        background: rgba(52, 152, 219, 0.15);
+        color: var(--blue);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .empty {
+        color: var(--muted);
+        padding: 20px;
+        text-align: center;
+      }
+      @media (max-width: 900px) {
+        body {
+          font-size: 12px;
+        }
+        th,
+        td {
+          padding: 6px 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Docker Exporter</h1>
+      <span class="spacer"></span>
+      <button
+        id="pauseBtn"
+        class="theme-btn"
+        type="button"
+        title="Pause auto-refresh"
+      >
+        ⏸ Pause
+      </button>
+      <select id="refreshSel" class="theme-btn" title="Auto-refresh interval">
+        <option value="5">5s</option>
+        <option value="10">10s</option>
+        <option value="15">15s</option>
+        <option value="30">30s</option>
+        <option value="45">45s</option>
+        <option value="60">60s</option>
+      </select>
+      <button
+        id="themeBtn"
+        class="theme-btn"
+        type="button"
+        title="Switch theme"
+      >
+        ☀️ Light
+      </button>
+    </header>
+    <main>
+      <div class="cards">
+        <div class="card">
+          <div class="label">Hostname</div>
+          <div class="value hostname">{{.Summary.Hostname}}</div>
+        </div>
+        <div class="card">
+          <div class="label">Running</div>
+          <div class="value green">{{.Summary.Running}}</div>
+        </div>
+        <div class="card">
+          <div class="label">Stopped</div>
+          <div class="value red">{{.Summary.Stopped}}</div>
+        </div>
+        <div class="card">
+          <div class="label">Volumes</div>
+          <div class="value blue">{{.Summary.Volumes}}</div>
+        </div>
+        <div class="card">
+          <div class="label">Images</div>
+          <div class="value blue">{{.Summary.Images}}</div>
+        </div>
+        {{if .Summary.ShowUpdates}}
+        <div class="card">
+          <div class="label">Updates</div>
+          <div class="value orange">{{.Summary.Updates}}</div>
+        </div>
+        {{end}}
+      </div>
+      <div class="cards">
+        <div class="card">
+          <div class="label">Memory used</div>
+          <div class="value orange">{{.Summary.MemoryUsed}}</div>
+        </div>
+        <div class="card">
+          <div class="label">Memory total</div>
+          <div class="value blue">{{.Summary.MemoryTotal}}</div>
+        </div>
+        <div class="card">
+          <div class="label">Volumes size</div>
+          <div class="value blue">{{.Summary.VolumesSize}}</div>
+        </div>
+        <div class="card">
+          <div class="label">Images size</div>
+          <div class="value blue">{{.Summary.ImagesSize}}</div>
+        </div>
+      </div>
+
+      <h2>Containers</h2>
+      {{if .Containers}}
+      <div class="table-wrap">
+        <div class="toolbar">
+          <input
+            class="search"
+            type="search"
+            placeholder="Filter containers…"
+            autocomplete="off"
+          />
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>State</th>
+              <th>Status</th>
+              <th>Compose</th>
+              <th>CPU</th>
+              <th>Memory</th>
+              <th>Net Rx</th>
+              <th>Net Tx</th>
+              <th>IO Read</th>
+              <th>IO Write</th>
+              <th>PIDs</th>
+              <th>Health</th>
+              <th>Exit</th>
+              <th>Mounts</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Containers}}
+            <tr>
+              <td>
+                <b>{{.Name}}</b>{{if .ID}}<br /><span
+                  class="muted"
+                  title="{{.ID}}"
+                  >{{.ShortID}}</span
+                >{{end}}
+              </td>
+              <td><span class="badge {{.StateClass}}">{{.State}}</span></td>
+              <td>{{.Status}}</td>
+              <td>
+                {{if .Compose}}{{.Compose}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .HasStats}}{{.CPU}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .HasStats}}{{.Memory}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .HasStats}}{{.NetRx}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .HasStats}}{{.NetTx}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .HasStats}}{{.IORead}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .HasStats}}{{.IOWrite}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .HasStats}}{{.PIDs}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .Healthy}}<span class="badge {{.HealthyClass}}"
+                  >{{.Healthy}}</span
+                >{{else}}<span class="muted">-</span>{{end}}
+              </td>
+              <td>
+                {{if .ExitCode}}{{.ExitCode}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+              <td>
+                {{if .Mounts}}{{.Mounts}}{{else}}<span class="muted">-</span
+                >{{end}}
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <div class="empty">No containers</div>
+      {{end}}
+
+      <h2>Images</h2>
+      {{if .Images}}
+      <div class="table-wrap">
+        <div class="toolbar">
+          <input
+            class="search"
+            type="search"
+            placeholder="Filter images…"
+            autocomplete="off"
+          />
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Size</th>
+              <th>Used</th>
+              <th>Containers</th>
+              <th>Registry</th>
+              <th>Created</th>
+              <th>Tag</th>
+              {{if .Summary.ShowUpdates}}
+              <th>Update</th>
+              <th>Remote version</th>
+              <th>Remote time</th>
+              {{end}}
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Images}}
+            <tr>
+              <td><b>{{.Name}}</b></td>
+              <td>{{.Size}}</td>
+              <td>{{.Usage}}</td>
+              <td>
+                {{if .Containers}}{{.Containers}}{{else}}<span class="muted"
+                  >-</span
+                >{{end}}
+              </td>
+              <td>{{.Registry}}</td>
+              <td>{{.Created}}</td>
+              <td>{{.Tag}}</td>
+              {{if $.Summary.ShowUpdates}}
+              <td>
+                <span class="badge {{.UpdateClass}}">{{.UpdateLabel}}</span>
+              </td>
+              <td>{{.RemoteVersion}}</td>
+              <td>{{.RemoteTime}}</td>
+              {{end}}
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <div class="empty">No images</div>
+      {{end}}
+
+      <h2>Volumes</h2>
+      {{if .Volumes}}
+      <div class="table-wrap">
+        <div class="toolbar">
+          <input
+            class="search"
+            type="search"
+            placeholder="Filter volumes…"
+            autocomplete="off"
+          />
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Driver</th>
+              <th>Size</th>
+              <th>Used</th>
+              <th>Containers</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Volumes}}
+            <tr>
+              <td><b>{{.Name}}</b></td>
+              <td>{{.Driver}}</td>
+              <td>{{.Size}}</td>
+              <td>{{.Usage}}</td>
+              <td>
+                {{if .Containers}}{{.Containers}}{{else}}<span class="muted"
+                  >-</span
+                >{{end}}
+              </td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <div class="empty">No volumes</div>
+      {{end}}
+    </main>
+    <button id="backTop" type="button" title="Back to top">&uarr;</button>
+    <script>
+      var uiKey = "docker-exporter-ui";
+      var ui;
+      try {
+        ui = JSON.parse(localStorage.getItem(uiKey)) || {};
+      } catch (e) {
+        ui = {};
+      }
+      ui.filters = ui.filters || [];
+      ui.sorts = ui.sorts || [];
+      function persist() {
+        localStorage.setItem(uiKey, JSON.stringify(ui));
+      }
+      function applySort(table, col, asc) {
+        var rows = Array.prototype.slice.call(table.tBodies[0].rows);
+        rows.sort(function (a, b) {
+          var x = a.cells[col].textContent,
+            y = b.cells[col].textContent;
+          return (
+            x.localeCompare(y, "ru", {
+              numeric: true,
+              sensitivity: "base",
+            }) * (asc ? 1 : -1)
+          );
+        });
+        rows.forEach(function (r) {
+          table.tBodies[0].appendChild(r);
+        });
+        table.querySelectorAll("th").forEach(function (h) {
+          h.classList.remove("asc", "desc");
+        });
+        var th = table.querySelectorAll("th")[col];
+        th.classList.add(asc ? "asc" : "desc");
+        th.setAttribute("data-asc", asc ? "1" : "0");
+      }
+      document.querySelectorAll("table").forEach(function (table, ti) {
+        var search = table.parentElement.querySelector(".search");
+        if (search) {
+          search.addEventListener("input", function () {
+            ui.filters[ti] = search.value;
+            persist();
+            var q = search.value.toLowerCase();
+            table.querySelectorAll("tbody tr").forEach(function (tr) {
+              tr.style.display =
+                tr.textContent.toLowerCase().indexOf(q) !== -1 ? "" : "none";
+            });
+          });
+        }
+        table.querySelectorAll("th").forEach(function (th, i) {
+          th.classList.add("sortable");
+          th.addEventListener("click", function () {
+            var asc = th.getAttribute("data-asc") !== "1";
+            applySort(table, i, asc);
+            ui.sorts[ti] = { i: i, asc: asc ? "1" : "0" };
+            persist();
+          });
+        });
+        if (ui.sorts[ti]) {
+          applySort(table, ui.sorts[ti].i, ui.sorts[ti].asc === "1");
+        }
+        if (search && ui.filters[ti]) {
+          search.value = ui.filters[ti];
+          search.dispatchEvent(new Event("input"));
+        }
+      });
+      (function () {
+        var key = "docker-exporter-refresh";
+        var pausedKey = "docker-exporter-paused";
+        var sel = document.getElementById("refreshSel");
+        var btn = document.getElementById("pauseBtn");
+        var meta = document.querySelector('meta[http-equiv="refresh"]');
+        var saved = localStorage.getItem(key);
+        if (saved) {
+          sel.value = saved;
+        }
+        function paused() {
+          return localStorage.getItem(pausedKey) === "1";
+        }
+        function sync() {
+          var p = paused();
+          btn.textContent = p ? "▶ Auto-update" : "⏸ Pause";
+          btn.title = p ? "Resume auto-refresh" : "Pause auto-refresh";
+          meta.content = p ? "" : sel.value + ";url=" + location.pathname;
+        }
+        sel.addEventListener("change", function () {
+          localStorage.setItem(key, sel.value);
+          sync();
+        });
+        btn.addEventListener("click", function () {
+          localStorage.setItem(pausedKey, paused() ? "" : "1");
+          sync();
+        });
+        sync();
+      })();
+      (function () {
+        var key = "docker-exporter-theme";
+        var theme =
+          localStorage.getItem(key) ||
+          (matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+        var btn = document.getElementById("themeBtn");
+        function sync() {
+          var t = document.documentElement.getAttribute("data-theme");
+          btn.textContent = t === "dark" ? "☀️ Light" : "🌙 Dark";
+          btn.title =
+            t === "dark" ? "Switch to light theme" : "Switch to dark theme";
+        }
+        btn.addEventListener("click", function () {
+          var t = document.documentElement.getAttribute("data-theme");
+          document.documentElement.setAttribute(
+            "data-theme",
+            t === "dark" ? "light" : "dark",
+          );
+          localStorage.setItem(
+            key,
+            document.documentElement.getAttribute("data-theme"),
+          );
+          sync();
+        });
+        sync();
+      })();
+      (function () {
+        var btn = document.getElementById("backTop");
+        window.addEventListener("scroll", function () {
+          btn.classList.toggle("show", window.scrollY > 300);
+        });
+        btn.addEventListener("click", function () {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      })();
+    </script>
+  </body>
+</html>
