@@ -57,10 +57,18 @@ func (m *Metrics) getImagesMetrics(ctx context.Context, dockerClient *client.Cli
 		if imageFullName != "none" {
 			reference, err := name.ParseReference(imageFullName)
 			if err == nil {
-				tag := reference.(name.Tag)
-				imageTag = tag.TagStr()
-				registry = tag.RegistryStr()
-				imageName = tag.RepositoryStr()
+				switch ref := reference.(type) {
+				case name.Tag:
+					imageTag = ref.TagStr()
+					registry = ref.RegistryStr()
+					imageName = ref.RepositoryStr()
+				case name.Digest:
+					imageTag = ref.DigestStr()
+					registry = ref.RegistryStr()
+					imageName = ref.RepositoryStr()
+				default:
+					continue
+				}
 				if registry == name.DefaultRegistry {
 					registry = m.Info.defaultRegistry
 					imageName = strings.TrimPrefix(imageName, "library/")
