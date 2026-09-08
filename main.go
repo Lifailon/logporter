@@ -268,6 +268,11 @@ func main() {
 		_ = json.NewEncoder(w).Encode(Refresh)
 	})
 
+	// Endpoint: / (redirect to dashboard)
+	httpServerMux.HandleFunc("/{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
+	})
+
 	// Endpoint: /health
 	httpServerMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
