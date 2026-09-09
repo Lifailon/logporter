@@ -11,6 +11,8 @@ Comparative CPU and memory usage measurements using `logporter` with log collect
 
 ![](/img/logporter-vs-cadvisor.jpg)
 
+The logporter exporter does not use low-level filesystem calls, but collects all metrics directly from the Docker socket.
+
 ## Quick start
 
 Clone the repository and run the monitoring full-stack with one command:
@@ -24,6 +26,14 @@ docker-compose up -d --pull always
 The stack includes Prometheus with an exporter connected and alerts configured, a Loki server targeted by a log collector, and Grafana with pre-configured data sources and added dashboards.
 
 Go to Grafana UI: `http://localhost:3000` and enter `admin`:`admin`.
+
+## Dashboard
+
+The project supports a built-in dashboard that contains summary information on the status of all containers, images, and volumes. The interface is based on [go-template](https://pkg.go.dev/html/template) and does not affect performance in any way, as it uses cached data.
+
+Go to Dashboard: `http://localhost:9333`.
+
+![](/img/dashboard.jpg)
 
 ## Manual setup
 
