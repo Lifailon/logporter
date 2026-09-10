@@ -356,7 +356,8 @@
         padding: 8px 14px;
         border-bottom: 1px solid var(--border);
       }
-      .modal-toolbar label {
+      .modal-toolbar label,
+      .follow-toggle {
         display: flex;
         align-items: center;
         gap: 6px;
@@ -366,10 +367,12 @@
         font-size: 13px;
         white-space: nowrap;
       }
-      .modal-toolbar label:has(input:checked) {
+      .modal-toolbar label:has(input:checked),
+      .follow-toggle:has(input:checked) {
         color: var(--text);
       }
-      .modal-toolbar input[type="checkbox"] {
+      .modal-toolbar input[type="checkbox"],
+      .follow-toggle input[type="checkbox"] {
         appearance: none;
         -webkit-appearance: none;
         margin: 0;
@@ -385,7 +388,8 @@
           background 0.2s,
           border-color 0.2s;
       }
-      .modal-toolbar input[type="checkbox"]::before {
+      .modal-toolbar input[type="checkbox"]::before,
+      .follow-toggle input[type="checkbox"]::before {
         content: "";
         position: absolute;
         top: 2px;
@@ -398,14 +402,17 @@
           transform 0.2s,
           background 0.2s;
       }
-      .modal-toolbar input[type="checkbox"]:hover {
+      .modal-toolbar input[type="checkbox"]:hover,
+      .follow-toggle input[type="checkbox"]:hover {
         border-color: var(--blue);
       }
-      .modal-toolbar input[type="checkbox"]:checked {
+      .modal-toolbar input[type="checkbox"]:checked,
+      .follow-toggle input[type="checkbox"]:checked {
         background: var(--blue);
         border-color: var(--blue);
       }
-      .modal-toolbar input[type="checkbox"]:checked::before {
+      .modal-toolbar input[type="checkbox"]:checked::before,
+      .follow-toggle input[type="checkbox"]:checked::before {
         transform: translateX(16px);
         background: #8ec8ff;
       }
@@ -526,14 +533,10 @@
     <header>
       <h1>Docker Exporter</h1>
       <span class="spacer"></span>
-      <button
-        id="pauseBtn"
-        class="theme-btn"
-        type="button"
-        title="Pause auto-refresh"
-      >
-        ⏸ Follow
-      </button>
+      <label id="pauseLabel" class="follow-toggle" title="Pause auto-refresh">
+        <input type="checkbox" id="pauseBtn" />
+        Live
+      </label>
       <select id="refreshSel" class="theme-btn" title="Auto-refresh interval">
         <option value="5">5s</option>
         <option value="10">10s</option>
@@ -638,6 +641,7 @@
       <div class="empty">No images</div>
       {{end}}
 
+      {{if .Summary.ShowVolumes}}
       <h2>Volumes</h2>
       {{if .Volumes}}
       <div class="table-wrap">
@@ -666,6 +670,7 @@
       </div>
       {{else}}
       <div class="empty">No volumes</div>
+      {{end}}
       {{end}}
     </main>
     <button id="backTop" type="button" title="Back to top">&uarr;</button>
@@ -697,19 +702,19 @@
           <label
             title="Auto-update and follow new log lines when at the bottom"
           >
-            <input type="checkbox" id="logsFollow" /> follow
+            <input type="checkbox" id="logsFollow" /> Follow
           </label>
           <label title="Show stdout"
-            ><input type="checkbox" id="logsStdout" checked /> stdout</label
+            ><input type="checkbox" id="logsStdout" checked /> Stdout</label
           >
           <label title="Show stderr"
-            ><input type="checkbox" id="logsStderr" checked /> stderr</label
+            ><input type="checkbox" id="logsStderr" checked /> Stderr</label
           >
           <label title="Show timestamps"
-            ><input type="checkbox" id="logsTime" checked /> timestamps</label
+            ><input type="checkbox" id="logsTime" checked /> Timestamps</label
           >
           <label title="Wrap long lines"
-            ><input type="checkbox" id="logsWrap" checked /> wordwrap</label
+            ><input type="checkbox" id="logsWrap" checked /> Wordwrap</label
           >
         </div>
         <div id="logsOutput" class="logs"></div>
@@ -808,6 +813,7 @@
         var pausedKey = "docker-exporter-paused";
         var sel = document.getElementById("refreshSel");
         var btn = document.getElementById("pauseBtn");
+        var label = document.getElementById("pauseLabel");
         var refreshBtn = document.getElementById("refreshBtn");
         var timer = null;
         var saved = localStorage.getItem(key);
@@ -840,8 +846,8 @@
         }
         function sync() {
           var p = paused();
-          btn.textContent = p ? "▶ Follow" : "⏸ Follow";
-          btn.title = p ? "Resume auto-refresh" : "Pause auto-refresh";
+          btn.checked = !p;
+          label.title = p ? "Resume auto-refresh" : "Pause auto-refresh";
           if (timer) {
             clearInterval(timer);
             timer = null;
@@ -1120,10 +1126,6 @@
     <div class="value red">{{.Summary.Stopped}}</div>
   </div>
   <div class="card">
-    <div class="label">Volumes</div>
-    <div class="value blue">{{.Summary.Volumes}}</div>
-  </div>
-  <div class="card">
     <div class="label">Images</div>
     <div class="value blue">{{.Summary.Images}}</div>
   </div>
@@ -1131,6 +1133,12 @@
   <div class="card">
     <div class="label">Updates</div>
     <div class="value orange">{{.Summary.Updates}}</div>
+  </div>
+  {{end}}
+  {{if .Summary.ShowVolumes}}
+  <div class="card">
+    <div class="label">Volumes</div>
+    <div class="value blue">{{.Summary.Volumes}}</div>
   </div>
   {{end}}
 </div>
@@ -1143,10 +1151,12 @@
     <div class="label">Memory total</div>
     <div class="value blue">{{.Summary.MemoryTotal}}</div>
   </div>
+  {{if .Summary.ShowVolumes}}
   <div class="card">
     <div class="label">Volumes size</div>
     <div class="value blue">{{.Summary.VolumesSize}}</div>
   </div>
+  {{end}}
   <div class="card">
     <div class="label">Images size</div>
     <div class="value blue">{{.Summary.ImagesSize}}</div>

@@ -47,6 +47,7 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		Volumes:     len(m.volumeMetrics),
 		Updates:     updateCount(m.imageUpdateMetrics),
 		ShowUpdates: m.GetImageUpdateMetrics,
+		ShowVolumes: m.GetVolumeMetrics,
 	}
 
 	containers := make([]dashboard.Container, 0, len(m.Labels))

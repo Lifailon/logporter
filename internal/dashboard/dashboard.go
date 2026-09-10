@@ -32,6 +32,7 @@ type Summary struct {
 	Updates     int
 	Volumes     int
 	ShowUpdates bool
+	ShowVolumes bool
 }
 
 type Container struct {
