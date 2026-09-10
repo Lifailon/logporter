@@ -1,9 +1,7 @@
 package logs
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"io"
 	"log/slog"
 	"sort"
@@ -13,9 +11,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 )
-
-// Limits the memory allocated per log line in bytes.
-const maxFrameSize = 4 * 1024 * 1024
 
 type ContainerInfo struct {
 	Name           string
@@ -176,59 +171,17 @@ func streamGetLogs(ctx context.Context, dockerClient *client.Client, loki *LokiC
 // Parsing the response from the stream
 func streamParseLogs(logs io.Reader, stdoutKey string, stdoutLabels map[string]string, stderrKey string, stderrLabels map[string]string, loki *LokiClient, lastTimestamp *time.Time) (bool, error) {
 	gotData := false
-	// Reading the packet header to determine the stream type
-	header := make([]byte, 8)
-	// Allocating memory for one line of log text
-	buf := make([]byte, 0, 64*1024)
-
-	for {
-		// Read headers
-		if _, err := io.ReadFull(logs, header); err != nil {
-			return gotData, err
-		}
-		// Get message size
-		size := int(binary.BigEndian.Uint32(header[4:8]))
-		readLen := size
-		// If the message size exceeds 4 MB, we truncate it
-		if readLen > maxFrameSize {
-			readLen = maxFrameSize
-		}
-		// The buffer is reused between frames to avoid memory allocation
-		if cap(buf) < readLen {
-			buf = make([]byte, readLen)
-		}
-		content := buf[:readLen]
-		if _, err := io.ReadFull(logs, content); err != nil {
-			return gotData, err
-		}
-		// If the log line size exceeds 4 MB, discard the tail
-		// The next frame should start with a new header
-		if size > readLen {
-			if _, err := io.CopyN(io.Discard, logs, int64(size-readLen)); err != nil {
-				return gotData, err
-			}
-		}
-
-		// Get stdout (1) by default or stderr (2) from the first byte of the header
+	err := parseLogFrames(logs, func(stream string, ts time.Time, line string) error {
 		key, labels := stdoutKey, stdoutLabels
-		if header[0] == 2 {
+		if stream == "stderr" {
 			key, labels = stderrKey, stderrLabels
 		}
-
-		timestamp := time.Now()
-		line := string(content)
-		// Extract the embedded timestamp from the message body
-		if i := bytes.IndexByte(content, ' '); i > 0 {
-			if t, err := time.Parse(time.RFC3339Nano, string(content[:i])); err == nil {
-				timestamp = t
-				line = string(content[i+1:])
-			}
-		}
-
 		gotData = true
-		*lastTimestamp = timestamp
-		loki.Send(key, labels, timestamp.UnixNano(), line)
-	}
+		*lastTimestamp = ts
+		loki.Send(key, labels, ts.UnixNano(), line)
+		return nil
+	})
+	return gotData, err
 }
 
 func containerRunning(ctx context.Context, dockerClient *client.Client, id string) bool {

@@ -54,7 +54,7 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		if l == nil {
 			continue
 		}
-		c := dashboard.Container{ID: id, Name: l.name, State: l.state, Status: cleanStatus(l.status), Compose: composeName(l)}
+		c := dashboard.Container{ID: id, Name: l.name, State: l.state, Status: cleanStatus(l.status), Compose: composeName(l), ComposeProject: l.composeProject}
 		if bm := m.baseMetrics[id]; bm != nil {
 			c.CPU = humanDuration(bm.cpuTotal)
 			c.Memory = humanBytes(int64(bm.memUsageBytes))

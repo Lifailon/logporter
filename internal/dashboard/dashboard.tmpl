@@ -35,6 +35,23 @@
       }
       * {
         box-sizing: border-box;
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) var(--bg);
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 5px;
+        border: 2px solid var(--bg);
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--muted);
       }
       body {
         margin: 0;
@@ -296,6 +313,204 @@
         padding: 20px;
         text-align: center;
       }
+      .modal-mask {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 40;
+        padding: 20px;
+      }
+      .modal-mask[hidden] {
+        display: none;
+      }
+      .modal {
+        width: min(1500px, 96vw);
+        height: min(85vh, 920px);
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-head b {
+        overflow-wrap: anywhere;
+      }
+      .modal-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 8px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .modal-toolbar label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        user-select: none;
+        color: var(--muted);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .modal-toolbar label:has(input:checked) {
+        color: var(--text);
+      }
+      .modal-toolbar input[type="checkbox"] {
+        appearance: none;
+        -webkit-appearance: none;
+        margin: 0;
+        width: 32px;
+        height: 18px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--border);
+        position: relative;
+        cursor: pointer;
+        flex-shrink: 0;
+        transition:
+          background 0.2s,
+          border-color 0.2s;
+      }
+      .modal-toolbar input[type="checkbox"]::before {
+        content: "";
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--blue);
+        transition:
+          transform 0.2s,
+          background 0.2s;
+      }
+      .modal-toolbar input[type="checkbox"]:hover {
+        border-color: var(--blue);
+      }
+      .modal-toolbar input[type="checkbox"]:checked {
+        background: var(--blue);
+        border-color: var(--blue);
+      }
+      .modal-toolbar input[type="checkbox"]:checked::before {
+        transform: translateX(16px);
+        background: #8ec8ff;
+      }
+      .modal-toolbar .search {
+        flex: 1;
+        min-width: 160px;
+        max-width: 380px;
+      }
+      .logs {
+        flex: 1;
+        overflow-y: auto;
+        font:
+          12px/1.5 Consolas,
+          "Cascadia Mono",
+          "Courier New",
+          monospace;
+        background: var(--bg);
+        padding: 6px 0 24px;
+      }
+      .log-line {
+        display: flex;
+        gap: 10px;
+        padding: 0 14px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      .log-line:hover {
+        background: var(--row-hover);
+      }
+      .log-time {
+        color: var(--muted);
+        flex-shrink: 0;
+      }
+      .log-line.stderr .log-text {
+        color: var(--red);
+      }
+      .log-line[hidden] {
+        display: none;
+      }
+      .logs.nowrap {
+        overflow-x: auto;
+      }
+      .logs.nowrap .log-line {
+        white-space: pre;
+        word-break: normal;
+        min-width: max-content;
+      }
+      .logs.nowrap .log-time {
+        flex-shrink: 0;
+      }
+      .modal-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 6px 14px;
+        border-top: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .modal-status .warn {
+        color: var(--orange);
+      }
+      table tbody tr[data-id] {
+        cursor: pointer;
+      }
+      .jump-bottom {
+        position: absolute;
+        right: 24px;
+        bottom: 54px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+        font-size: 18px;
+        cursor: pointer;
+        z-index: 20;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(8px);
+        transition:
+          opacity 0.2s,
+          transform 0.2s,
+          visibility 0.2s;
+      }
+      .jump-bottom.show {
+        display: flex;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+      .jump-bottom:hover {
+        border-color: var(--blue);
+      }
+      mark {
+        background: #ffd000;
+        color: #1f2430;
+        border-radius: 2px;
+      }
       @media (max-width: 900px) {
         body {
           font-size: 12px;
@@ -317,7 +532,7 @@
         type="button"
         title="Pause auto-refresh"
       >
-        ⏸ Pause
+        ⏸ Follow
       </button>
       <select id="refreshSel" class="theme-btn" title="Auto-refresh interval">
         <option value="5">5s</option>
@@ -327,6 +542,14 @@
         <option value="45">45s</option>
         <option value="60">60s</option>
       </select>
+      <button
+        id="refreshBtn"
+        class="theme-btn"
+        type="button"
+        title="Refresh now"
+      >
+        ⟳ Refresh
+      </button>
       <button
         id="themeBtn"
         class="theme-btn"
@@ -369,7 +592,9 @@
               <th>Mounts</th>
             </tr>
           </thead>
-          <tbody id="tbody-containers">{{template "rowsContainers" .}}</tbody>
+          <tbody id="tbody-containers">
+            {{template "rowsContainers" .}}
+          </tbody>
         </table>
       </div>
       {{else}}
@@ -404,7 +629,9 @@
               {{end}}
             </tr>
           </thead>
-          <tbody id="tbody-images">{{template "rowsImages" .}}</tbody>
+          <tbody id="tbody-images">
+            {{template "rowsImages" .}}
+          </tbody>
         </table>
       </div>
       {{else}}
@@ -432,7 +659,9 @@
               <th>Containers</th>
             </tr>
           </thead>
-          <tbody id="tbody-volumes">{{template "rowsVolumes" .}}</tbody>
+          <tbody id="tbody-volumes">
+            {{template "rowsVolumes" .}}
+          </tbody>
         </table>
       </div>
       {{else}}
@@ -440,6 +669,64 @@
       {{end}}
     </main>
     <button id="backTop" type="button" title="Back to top">&uarr;</button>
+    <div id="logsModal" class="modal-mask" hidden>
+      <div class="modal">
+        <div class="modal-head">
+          <b id="logsTitle"></b>
+          <span class="spacer"></span>
+          <button id="logsClose" class="theme-btn" type="button" title="Close">
+            ✕
+          </button>
+        </div>
+        <div class="modal-toolbar">
+          <label
+            title="Auto-update and follow new log lines when at the bottom"
+          >
+            <input type="checkbox" id="logsFollow" /> follow
+          </label>
+          <select id="logsTail" class="theme-btn" title="Number of lines">
+            <option value="100">100 lines</option>
+            <option value="200" selected>200 lines</option>
+            <option value="500">500 lines</option>
+            <option value="1000">1000 lines</option>
+            <option value="5000">5000 lines</option>
+          </select>
+          <label title="Show stdout"
+            ><input type="checkbox" id="logsStdout" checked /> stdout</label
+          >
+          <label title="Show stderr"
+            ><input type="checkbox" id="logsStderr" checked /> stderr</label
+          >
+          <label title="Show timestamps"
+            ><input type="checkbox" id="logsTime" checked /> timestamps</label
+          >
+          <label title="Wrap long lines"
+            ><input type="checkbox" id="logsWrap" checked /> wordwrap</label
+          >
+          <input
+            class="search"
+            id="logsFilter"
+            type="search"
+            placeholder="Filter by content…"
+            autocomplete="off"
+            title="Filter loaded log lines by content"
+          />
+        </div>
+        <div id="logsOutput" class="logs"></div>
+        <button
+          id="logsJump"
+          class="jump-bottom"
+          type="button"
+          title="Go to bottom"
+        >
+          &darr;
+        </button>
+        <div class="modal-status">
+          <span id="logsCount"></span>
+          <span id="logsTrunc" class="warn"></span>
+        </div>
+      </div>
+    </div>
     <script>
       var uiKey = "docker-exporter-ui";
       var ui;
@@ -521,6 +808,7 @@
         var pausedKey = "docker-exporter-paused";
         var sel = document.getElementById("refreshSel");
         var btn = document.getElementById("pauseBtn");
+        var refreshBtn = document.getElementById("refreshBtn");
         var timer = null;
         var saved = localStorage.getItem(key);
         if (saved) {
@@ -552,7 +840,7 @@
         }
         function sync() {
           var p = paused();
-          btn.textContent = p ? "▶ Auto-update" : "⏸ Pause";
+          btn.textContent = p ? "▶ Follow" : "⏸ Follow";
           btn.title = p ? "Resume auto-refresh" : "Pause auto-refresh";
           if (timer) {
             clearInterval(timer);
@@ -570,6 +858,7 @@
           localStorage.setItem(pausedKey, paused() ? "" : "1");
           sync();
         });
+        refreshBtn.addEventListener("click", poll);
         sync();
       })();
       (function () {
@@ -608,6 +897,209 @@
         });
         btn.addEventListener("click", function () {
           window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      })();
+      (function () {
+        var $ = function (id) {
+          return document.getElementById(id);
+        };
+        var out = $("logsOutput"),
+          mask = $("logsModal"),
+          title = $("logsTitle"),
+          countEl = $("logsCount"),
+          truncEl = $("logsTrunc"),
+          selTime = $("logsTime"),
+          selOut = $("logsStdout"),
+          selErr = $("logsStderr"),
+          selFollow = $("logsFollow"),
+          selWrap = $("logsWrap"),
+          filter = $("logsFilter"),
+          jump = $("logsJump");
+        var cur = null,
+          polling = false,
+          timer = null,
+          lastTs = 0;
+
+        function stream() {
+          var s = selOut.checked,
+            e = selErr.checked;
+          return s && e ? "all" : s ? "stdout" : e ? "stderr" : "none";
+        }
+        function nearBottom() {
+          return out.scrollHeight - out.scrollTop - out.clientHeight < 40;
+        }
+        function doScroll() {
+          out.scrollTop = out.scrollHeight;
+          requestAnimationFrame(function () {
+            out.scrollTop = out.scrollHeight;
+          });
+        }
+        function sync() {
+          var nb = nearBottom();
+          selFollow.checked = nb;
+          jump.classList.toggle("show", !nb);
+          if (nb && !polling) start();
+          else if (!nb && polling) stop();
+        }
+        function start() {
+          polling = true;
+          clearInterval(timer);
+          timer = setInterval(load, 5000);
+        }
+        function stop() {
+          polling = false;
+          clearInterval(timer);
+          timer = null;
+        }
+        function mark(text, q) {
+          var line = text.textContent;
+          text.textContent = "";
+          if (!q) {
+            text.appendChild(document.createTextNode(line));
+            return;
+          }
+          var low = line.toLowerCase(),
+            pos = 0,
+            i;
+          while ((i = low.indexOf(q, pos)) !== -1) {
+            if (i > pos) {
+              text.appendChild(document.createTextNode(line.slice(pos, i)));
+            }
+            var m = document.createElement("mark");
+            m.textContent = line.slice(i, i + q.length);
+            text.appendChild(m);
+            pos = i + q.length;
+          }
+          if (pos < line.length) {
+            text.appendChild(document.createTextNode(line.slice(pos)));
+          }
+        }
+        function filterLines() {
+          var q = filter.value.toLowerCase();
+          out.querySelectorAll(".log-line").forEach(function (row) {
+            var err = row.classList.contains("stderr");
+            var text = row.querySelector(".log-text");
+            var ok =
+              (err ? selErr.checked : selOut.checked) &&
+              (!q || text.textContent.toLowerCase().indexOf(q) !== -1);
+            row.hidden = !ok;
+            if (ok) mark(text, q);
+          });
+        }
+        function append(data) {
+          var frag = document.createDocumentFragment();
+          data.forEach(function (l) {
+            var ts = Date.parse(l.ts);
+            if (polling && lastTs && ts <= lastTs) return;
+            var row = document.createElement("div");
+            row.className =
+              "log-line " + (l.stream === "stderr" ? "stderr" : "stdout");
+            var line = l.line.replace(/\r?\n$/, "");
+            if (!line) return;
+            row.title = line;
+            var time = document.createElement("span");
+            time.className = "log-time";
+            time.textContent = new Date(ts)
+              .toISOString()
+              .replace("T", " ")
+              .replace("Z", "");
+            time.hidden = !selTime.checked;
+            row.appendChild(time);
+            var text = document.createElement("span");
+            text.className = "log-text";
+            text.textContent = line;
+            row.appendChild(text);
+            frag.appendChild(row);
+            if (ts > lastTs) lastTs = ts;
+          });
+          out.appendChild(frag);
+          countEl.textContent =
+            out.querySelectorAll(".log-line").length + " lines";
+        }
+        function load() {
+          if (!cur || stream() === "none") return;
+          var p = new URLSearchParams();
+          p.set("tail", $("logsTail").value);
+          p.set("stream", stream());
+          if (polling && lastTs) {
+            p.set("since", new Date(lastTs + 1).toISOString());
+          }
+          fetch(
+            "/api/containers/" + encodeURIComponent(cur.id) + "/logs?" + p,
+            { cache: "no-store" },
+          )
+            .then(function (r) {
+              return r.status === 400 || r.status === 404 ? null : r.json();
+            })
+            .then(function (d) {
+              if (!d) return close();
+              truncEl.textContent = d.truncated
+                ? "output truncated by size limit"
+                : "";
+              append(d.logs);
+              if (filter.value) filterLines();
+              doScroll();
+              sync();
+            })
+            .catch(function () {});
+        }
+        function reset() {
+          lastTs = 0;
+          out.textContent = "";
+          countEl.textContent = "";
+          truncEl.textContent = "";
+        }
+        function reload() {
+          stop();
+          reset();
+          load();
+        }
+        function open(id, name, compose) {
+          cur = { id: id, name: name };
+          title.textContent = compose && name ? compose + "/" + name : name;
+          mask.hidden = false;
+          document.body.style.overflow = "hidden";
+          reset();
+          load();
+        }
+        function close() {
+          stop();
+          cur = null;
+          mask.hidden = true;
+          document.body.style.overflow = "";
+          out.textContent = "";
+        }
+        out.addEventListener("scroll", sync);
+        jump.addEventListener("click", doScroll);
+        $("logsClose").addEventListener("click", close);
+        selFollow.addEventListener("change", function () {
+          if (selFollow.checked) {
+            doScroll();
+          } else {
+            stop();
+          }
+        });
+        $("logsTail").addEventListener("change", reload);
+        selOut.addEventListener("change", reload);
+        selErr.addEventListener("change", reload);
+        selTime.addEventListener("change", function () {
+          out.querySelectorAll(".log-time").forEach(function (t) {
+            t.hidden = !selTime.checked;
+          });
+        });
+        selWrap.addEventListener("change", function () {
+          out.classList.toggle("nowrap", !selWrap.checked);
+        });
+        filter.addEventListener("input", filterLines);
+        mask.addEventListener("click", function (e) {
+          if (e.target === mask) close();
+        });
+        document.addEventListener("click", function (e) {
+          var row = e.target.closest("tr[data-id]");
+          if (row) open(row.dataset.id, row.dataset.name, row.dataset.compose);
+        });
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && !mask.hidden) close();
         });
       })();
     </script>
@@ -660,14 +1152,15 @@
     <div class="value blue">{{.Summary.ImagesSize}}</div>
   </div>
 </div>
-{{end}}
-{{define "rowsContainers"}}
-{{range .Containers}}
-<tr>
+{{end}} {{define "rowsContainers"}} {{range .Containers}}
+<tr
+  data-id="{{.ID}}"
+  data-name="{{.Name}}"
+  data-compose="{{.ComposeProject}}"
+  title="Click to view logs"
+>
   <td>
-    <b>{{.Name}}</b>{{if .ID}}<br /><span
-      class="muted"
-      title="{{.ID}}"
+    <b>{{.Name}}</b>{{if .ID}}<br /><span class="muted" title="{{.ID}}"
       >{{.ShortID}}</span
     >{{end}}
   </td>
@@ -696,14 +1189,9 @@
   <td>
     {{if .ExitCode}}{{.ExitCode}}{{else}}<span class="muted">-</span>{{end}}
   </td>
-  <td>
-    {{if .Mounts}}{{.Mounts}}{{else}}<span class="muted">-</span>{{end}}
-  </td>
+  <td>{{if .Mounts}}{{.Mounts}}{{else}}<span class="muted">-</span>{{end}}</td>
 </tr>
-{{end}}
-{{end}}
-{{define "rowsImages"}}
-{{range .Images}}
+{{end}} {{end}} {{define "rowsImages"}} {{range .Images}}
 <tr>
   <td><b>{{.Name}}</b></td>
   <td>{{.Size}}</td>
@@ -720,10 +1208,7 @@
   <td>{{.RemoteTime}}</td>
   {{end}}
 </tr>
-{{end}}
-{{end}}
-{{define "rowsVolumes"}}
-{{range .Volumes}}
+{{end}} {{end}} {{define "rowsVolumes"}} {{range .Volumes}}
 <tr>
   <td><b>{{.Name}}</b></td>
   <td>{{.Driver}}</td>
@@ -733,5 +1218,4 @@
     {{if .Containers}}{{.Containers}}{{else}}<span class="muted">-</span>{{end}}
   </td>
 </tr>
-{{end}}
-{{end}}
+{{end}} {{end}}

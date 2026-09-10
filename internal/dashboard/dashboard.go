@@ -35,22 +35,23 @@ type Summary struct {
 }
 
 type Container struct {
-	ID       string
-	Name     string
-	State    string
-	Status   string
-	Compose  string
-	CPU      string
-	Memory   string
-	NetRx    string
-	NetTx    string
-	IORead   string
-	IOWrite  string
-	PIDs     string
-	Healthy  string
-	ExitCode string
-	Mounts   string
-	HasStats bool
+	ID             string
+	Name           string
+	State          string
+	Status         string
+	Compose        string
+	ComposeProject string
+	CPU            string
+	Memory         string
+	NetRx          string
+	NetTx          string
+	IORead         string
+	IOWrite        string
+	PIDs           string
+	Healthy        string
+	ExitCode       string
+	Mounts         string
+	HasStats       bool
 }
 
 func (d Container) StateClass() string {
