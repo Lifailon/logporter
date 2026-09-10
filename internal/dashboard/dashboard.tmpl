@@ -679,11 +679,14 @@
           </button>
         </div>
         <div class="modal-toolbar">
-          <label
-            title="Auto-update and follow new log lines when at the bottom"
-          >
-            <input type="checkbox" id="logsFollow" /> follow
-          </label>
+          <input
+            class="search"
+            id="logsFilter"
+            type="search"
+            placeholder="Filter messages..."
+            autocomplete="off"
+            title="Filter loaded log lines by content"
+          />
           <select id="logsTail" class="theme-btn" title="Number of lines">
             <option value="100">100 lines</option>
             <option value="200" selected>200 lines</option>
@@ -691,6 +694,11 @@
             <option value="1000">1000 lines</option>
             <option value="5000">5000 lines</option>
           </select>
+          <label
+            title="Auto-update and follow new log lines when at the bottom"
+          >
+            <input type="checkbox" id="logsFollow" /> follow
+          </label>
           <label title="Show stdout"
             ><input type="checkbox" id="logsStdout" checked /> stdout</label
           >
@@ -703,14 +711,6 @@
           <label title="Wrap long lines"
             ><input type="checkbox" id="logsWrap" checked /> wordwrap</label
           >
-          <input
-            class="search"
-            id="logsFilter"
-            type="search"
-            placeholder="Filter by content…"
-            autocomplete="off"
-            title="Filter loaded log lines by content"
-          />
         </div>
         <div id="logsOutput" class="logs"></div>
         <button
