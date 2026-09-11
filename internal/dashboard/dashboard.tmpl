@@ -313,6 +313,38 @@
         padding: 20px;
         text-align: center;
       }
+      tr.group-row {
+        cursor: pointer;
+        user-select: none;
+      }
+      tr.group-row td {
+        background: var(--thead);
+        padding: 5px 12px;
+        border-bottom: 1px solid var(--border);
+        color: var(--blue);
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      tr.group-row:hover td {
+        background: var(--thead);
+      }
+      tr.group-row td:first-child::before {
+        content: "▾ ";
+        opacity: 0.7;
+      }
+      tr.group-row.collapsed td:first-child::before {
+        content: "▸ ";
+      }
+      tr.group-row .group-count {
+        color: var(--muted);
+        font-weight: 600;
+        margin-left: 8px;
+      }
+      tr.group-row .group-label {
+        color: var(--muted);
+      }
       .modal-mask {
         position: fixed;
         inset: 0;
@@ -531,7 +563,7 @@
   </head>
   <body>
     <header>
-      <h1>Docker Exporter</h1>
+      <h1>logPorter Dashboard</h1>
       <span class="spacer"></span>
       <label id="pauseLabel" class="follow-toggle" title="Pause auto-refresh">
         <input type="checkbox" id="pauseBtn" />
@@ -566,15 +598,24 @@
       <div id="cards">{{template "cards" .}}</div>
 
       <h2>Containers</h2>
-      {{if .Containers}}
+      {{if .ContainerGroups}}
       <div class="table-wrap">
         <div class="toolbar">
           <input
             class="search"
             type="search"
             placeholder="Filter containers…"
+            title="Supports comparisons: >5MiB, <1GiB, >30s, <100"
             autocomplete="off"
           />
+          <button
+            id="collapseAllBtn"
+            class="theme-btn"
+            type="button"
+            title="Collapse all stacks"
+          >
+➖ Collapse
+          </button>
         </div>
         <table>
           <thead>
@@ -745,20 +786,51 @@
       function persist() {
         localStorage.setItem(uiKey, JSON.stringify(ui));
       }
-      function applySort(table, col, asc) {
-        var rows = Array.prototype.slice.call(table.tBodies[0].rows);
-        rows.sort(function (a, b) {
-          var x = a.cells[col].textContent,
-            y = b.cells[col].textContent;
-          return (
-            x.localeCompare(y, "ru", {
-              numeric: true,
-              sensitivity: "base",
-            }) * (asc ? 1 : -1)
-          );
+      function getGroups(table) {
+        var tbody = table.tBodies[0];
+        var groups = [],
+          cur = null,
+          hasGroups = false;
+        Array.prototype.forEach.call(tbody.rows, function (r) {
+          if (r.classList.contains("group-row")) {
+            hasGroups = true;
+            cur = { header: r, rows: [] };
+            groups.push(cur);
+          } else if (cur) {
+            cur.rows.push(r);
+          }
         });
-        rows.forEach(function (r) {
-          table.tBodies[0].appendChild(r);
+        if (!hasGroups) {
+          return [
+            { header: null, rows: Array.prototype.slice.call(tbody.rows) },
+          ];
+        }
+        return groups;
+      }
+      function applySort(table, col, asc) {
+        var tbody = table.tBodies[0];
+        var groups = getGroups(table);
+        groups.forEach(function (g, gi) {
+          var ref = gi < groups.length - 1 ? groups[gi + 1].header : null;
+          g.rows.sort(function (a, b) {
+            var x = a.cells[col].textContent,
+              y = b.cells[col].textContent;
+            var nx = sortVal(x),
+              ny = sortVal(y);
+            var c;
+            if (nx != null && ny != null) {
+              c = nx === ny ? 0 : nx < ny ? -1 : 1;
+            } else {
+              c = x.localeCompare(y, "ru", {
+                numeric: true,
+                sensitivity: "base",
+              });
+            }
+            return c * (asc ? 1 : -1);
+          });
+          g.rows.forEach(function (r) {
+            tbody.insertBefore(r, ref);
+          });
         });
         table.querySelectorAll("th").forEach(function (h) {
           h.classList.remove("asc", "desc");
@@ -767,12 +839,162 @@
         th.classList.add(asc ? "asc" : "desc");
         th.setAttribute("data-asc", asc ? "1" : "0");
       }
+      function sortVal(text) {
+        var s = parseSizeCell(text);
+        if (s != null) {
+          return s;
+        }
+        var d = parseDurCell(text);
+        if (d != null) {
+          return d;
+        }
+        var n = parseNumCell(text);
+        if (n != null) {
+          return n;
+        }
+        return null;
+      }
+      function parseSizeCell(text) {
+        var m = /^([0-9.]+)\s*([KMGTPE]?i?B)$/i.exec(text.trim());
+        if (!m) {
+          return null;
+        }
+        var f = {
+          B: 1,
+          KB: 1024,
+          KIB: 1024,
+          MB: 1048576,
+          MIB: 1048576,
+          GB: 1073741824,
+          GIB: 1073741824,
+          TB: 1099511627776,
+          TIB: 1099511627776,
+          PB: 1125899906842624,
+          PIB: 1125899906842624,
+        };
+        var u = m[2].toUpperCase();
+        if (!(u in f)) {
+          return null;
+        }
+        return parseFloat(m[1]) * f[u];
+      }
+      function parseDurCell(text) {
+        var m = /^([0-9.]+)\s*(ms|s|min|m|h)$/i.exec(text.trim());
+        if (!m) {
+          return null;
+        }
+        var v = parseFloat(m[1]),
+          u = m[2].toLowerCase();
+        return u === "ms"
+          ? v / 1000
+          : u === "s"
+            ? v
+            : u === "min" || u === "m"
+              ? v * 60
+              : v * 3600;
+      }
+      function parseNumCell(text) {
+        var t = text.trim();
+        return /^[0-9.-]+$/.test(t) ? parseFloat(t) : null;
+      }
+      function parseQuery(q) {
+        var m = /^\s*(>=|<=|>|<|=)\s*([0-9.]+)\s*([a-zA-Z]*)\s*$/.exec(q);
+        if (!m) {
+          return null;
+        }
+        var raw = m[3],
+          u = raw.toLowerCase(),
+          val = parseFloat(m[2]);
+        var sec = { s: 1, ms: 0.001, min: 60, h: 3600 };
+        if (u in sec) {
+          return { op: m[1], kind: "time", val: val * sec[u] };
+        }
+        if (raw === "m") {
+          return { op: m[1], kind: "time", val: val * 60 };
+        }
+        var size = {
+          b: 1,
+          k: 1024,
+          kb: 1024,
+          kib: 1024,
+          m: 1048576,
+          mb: 1048576,
+          mib: 1048576,
+          g: 1073741824,
+          gb: 1073741824,
+          gib: 1073741824,
+          t: 1099511627776,
+          tb: 1099511627776,
+          tib: 1099511627776,
+          p: 1125899906842624,
+          pb: 1125899906842624,
+          pib: 1125899906842624,
+        };
+        if (u in size) {
+          return { op: m[1], kind: "size", val: val * size[u] };
+        }
+        return { op: m[1], kind: "num", val: val };
+      }
+      function cmpCell(text, q) {
+        var v;
+        if (q.kind === "size") {
+          v = parseSizeCell(text);
+        } else if (q.kind === "time") {
+          v = parseDurCell(text);
+        } else {
+          v = parseNumCell(text);
+        }
+        if (v == null) {
+          return false;
+        }
+        switch (q.op) {
+          case ">":
+            return v > q.val;
+          case ">=":
+            return v >= q.val;
+          case "<":
+            return v < q.val;
+          case "<=":
+            return v <= q.val;
+          case "=":
+            return Math.abs(v - q.val) < 1e-6;
+        }
+        return false;
+      }
+      function rowMatches(row, q, comp) {
+        if (!comp) {
+          return row.textContent.toLowerCase().indexOf(q) !== -1;
+        }
+        for (var i = 0; i < row.cells.length; i++) {
+          if (cmpCell(row.cells[i].textContent, comp)) {
+            return true;
+          }
+        }
+        return false;
+      }
       function applyFilter(table, ti) {
         var search = table.parentElement.querySelector(".search");
-        var q = (search ? search.value : "").toLowerCase();
-        table.querySelectorAll("tbody tr").forEach(function (tr) {
-          tr.style.display =
-            tr.textContent.toLowerCase().indexOf(q) !== -1 ? "" : "none";
+        var raw = search ? search.value : "";
+        var comp = parseQuery(raw);
+        var q = raw.toLowerCase();
+        getGroups(table).forEach(function (g) {
+          var collapsed =
+            g.header && g.header.classList.contains("collapsed");
+          var visible = false;
+          g.rows.forEach(function (r) {
+            var show = rowMatches(r, q, comp);
+            if (show) {
+              visible = true;
+            }
+            if (collapsed) {
+              r.style.display = "none";
+            } else {
+              r.style.display = show ? "" : "none";
+            }
+          });
+          if (g.header) {
+            g.header.style.display = visible || collapsed ? "" : "none";
+          }
         });
       }
       function applyUI(ti) {
@@ -783,7 +1005,44 @@
         if (ui.sorts[ti]) {
           applySort(table, ui.sorts[ti].i, ui.sorts[ti].asc === "1");
         }
+        applyCollapsed(table, ti);
         applyFilter(table, ti);
+      }
+      function collapsedProjects() {
+        return ui.collapsed || [];
+      }
+      function applyCollapsed(table, ti) {
+        if (ti !== 0) {
+          return;
+        }
+        var list = collapsedProjects();
+        getGroups(table).forEach(function (g) {
+          if (!g.header) {
+            return;
+          }
+          g.header.classList.toggle(
+            "collapsed",
+            list.indexOf(g.header.getAttribute("data-group")) !== -1,
+          );
+        });
+      }
+      function syncCollapseAll() {
+        var table = document.querySelectorAll("table")[0];
+        if (!table) {
+          return;
+        }
+        var groups = getGroups(table);
+        var allCollapsed =
+          groups.length > 0 &&
+          groups.every(function (g) {
+            return !g.header || g.header.classList.contains("collapsed");
+          });
+        var btn = document.getElementById("collapseAllBtn");
+        if (!btn) {
+          return;
+        }
+        btn.textContent = allCollapsed ? "➕ Expand" : "➖ Collapse";
+        btn.title = allCollapsed ? "Expand all stacks" : "Collapse all stacks";
       }
       document.querySelectorAll("table").forEach(function (table, ti) {
         var search = table.parentElement.querySelector(".search");
@@ -806,6 +1065,60 @@
             persist();
           });
         });
+        if (ti === 0) {
+          var collapseAllBtn = document.getElementById("collapseAllBtn");
+          if (collapseAllBtn) {
+            collapseAllBtn.addEventListener("click", function () {
+              var groups = getGroups(table);
+              var collapse = groups.some(function (g) {
+                return g.header && !g.header.classList.contains("collapsed");
+              });
+              var list = [];
+              groups.forEach(function (g) {
+                if (!g.header) {
+                  return;
+                }
+                g.header.classList.toggle("collapsed", collapse);
+                if (collapse) {
+                  list.push(g.header.getAttribute("data-group"));
+                }
+              });
+              ui.collapsed = list;
+              persist();
+              applyFilter(table, ti);
+              syncCollapseAll();
+            });
+          }
+          table.addEventListener("click", function (e) {
+            var gr = e.target.closest("tr.group-row");
+            if (!gr) {
+              return;
+            }
+            var hide = gr.classList.toggle("collapsed");
+            var r = gr.nextElementSibling;
+            while (
+              r &&
+              r.tagName === "TR" &&
+              !r.classList.contains("group-row")
+            ) {
+              r.style.display = hide ? "none" : "";
+              r = r.nextElementSibling;
+            }
+            var name = gr.getAttribute("data-group");
+            var list = collapsedProjects();
+            var idx = list.indexOf(name);
+            if (hide && idx === -1) {
+              list.push(name);
+            }
+            if (!hide && idx !== -1) {
+              list.splice(idx, 1);
+            }
+            ui.collapsed = list;
+            persist();
+            syncCollapseAll();
+          });
+          syncCollapseAll();
+        }
         applyUI(ti);
       });
       (function () {
@@ -823,7 +1136,7 @@
         function paused() {
           return localStorage.getItem(pausedKey) === "1";
         }
-        function update(data) {
+function update(data) {
           var cards = document.getElementById("cards");
           if (cards && data.cards) {
             cards.innerHTML = data.cards;
@@ -835,6 +1148,7 @@
               applyUI(ti);
             }
           });
+          syncCollapseAll();
         }
         function poll() {
           fetch("/api/dashboard/refresh", { cache: "no-store" })
@@ -878,7 +1192,7 @@
         var btn = document.getElementById("themeBtn");
         function sync() {
           var t = document.documentElement.getAttribute("data-theme");
-          btn.textContent = t === "dark" ? "☀️ Light" : "🌙 Dark";
+          btn.textContent = t === "dark" ? "🌙 Dark" : "☀️ Light";
           btn.title =
             t === "dark" ? "Switch to light theme" : "Switch to dark theme";
         }
@@ -1001,7 +1315,6 @@
             row.className =
               "log-line " + (l.stream === "stderr" ? "stderr" : "stdout");
             var line = l.line.replace(/\r?\n$/, "");
-            if (!line) return;
             row.title = line;
             var time = document.createElement("span");
             time.className = "log-time";
@@ -1162,7 +1475,16 @@
     <div class="value blue">{{.Summary.ImagesSize}}</div>
   </div>
 </div>
-{{end}} {{define "rowsContainers"}} {{range .Containers}}
+{{end}} {{define "rowsContainers"}} {{range .ContainerGroups}}
+<tr class="group-row" data-group="{{.Name}}">
+  <td colspan="14">
+    {{if .Name}}<span>{{.Name}}</span>{{else}}<span class="group-label"
+      >Standalone</span
+    >{{end}}
+    <span class="group-count">{{len .Containers}}</span>
+  </td>
+</tr>
+{{range .Containers}}
 <tr
   data-id="{{.ID}}"
   data-name="{{.Name}}"
@@ -1177,7 +1499,9 @@
   <td><span class="badge {{.StateClass}}">{{.State}}</span></td>
   <td>{{.Status}}</td>
   <td>
-    {{if .Compose}}{{.Compose}}{{else}}<span class="muted">-</span>{{end}}
+    {{if .ComposeService}}{{.ComposeService}}{{else}}<span class="muted"
+      >-</span
+    >{{end}}
   </td>
   <td>{{if .HasStats}}{{.CPU}}{{else}}<span class="muted">-</span>{{end}}</td>
   <td>
@@ -1201,7 +1525,7 @@
   </td>
   <td>{{if .Mounts}}{{.Mounts}}{{else}}<span class="muted">-</span>{{end}}</td>
 </tr>
-{{end}} {{end}} {{define "rowsImages"}} {{range .Images}}
+{{end}} {{end}} {{end}} {{define "rowsImages"}} {{range .Images}}
 <tr>
   <td><b>{{.Name}}</b></td>
   <td>{{.Size}}</td>
