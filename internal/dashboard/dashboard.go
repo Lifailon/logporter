@@ -12,10 +12,16 @@ var templateFS embed.FS
 var tmpl = template.Must(template.New("dashboard.tmpl").ParseFS(templateFS, "dashboard.tmpl"))
 
 type Data struct {
-	Summary    Summary
+	Summary         Summary
+	Containers      []Container
+	ContainerGroups []ContainerGroup
+	Images          []Image
+	Volumes         []Volume
+}
+
+type ContainerGroup struct {
+	Name       string
 	Containers []Container
-	Images     []Image
-	Volumes    []Volume
 }
 
 type Summary struct {
@@ -32,25 +38,28 @@ type Summary struct {
 	Updates     int
 	Volumes     int
 	ShowUpdates bool
+	ShowVolumes bool
 }
 
 type Container struct {
-	ID       string
-	Name     string
-	State    string
-	Status   string
-	Compose  string
-	CPU      string
-	Memory   string
-	NetRx    string
-	NetTx    string
-	IORead   string
-	IOWrite  string
-	PIDs     string
-	Healthy  string
-	ExitCode string
-	Mounts   string
-	HasStats bool
+	ID             string
+	Name           string
+	State          string
+	Status         string
+	Compose        string
+	ComposeProject string
+	ComposeService string
+	CPU            string
+	Memory         string
+	NetRx          string
+	NetTx          string
+	IORead         string
+	IOWrite        string
+	PIDs           string
+	Healthy        string
+	ExitCode       string
+	Mounts         string
+	HasStats       bool
 }
 
 func (d Container) StateClass() string {

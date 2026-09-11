@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -34,7 +35,7 @@ func (m *Metrics) DashboardData() dashboard.Data {
 	}
 
 	summary := dashboard.Summary{
-		Title:       "Docker Exporter — " + m.Info.Hostname,
+		Title:       "logporter - " + m.Info.Hostname,
 		Hostname:    m.Info.Hostname,
 		MemoryTotal: humanBytes(m.Info.totalMemory),
 		MemoryUsed:  humanBytes(memoryUsed),
@@ -47,6 +48,7 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		Volumes:     len(m.volumeMetrics),
 		Updates:     updateCount(m.imageUpdateMetrics),
 		ShowUpdates: m.GetImageUpdateMetrics,
+		ShowVolumes: m.GetVolumeMetrics,
 	}
 
 	containers := make([]dashboard.Container, 0, len(m.Labels))
@@ -54,7 +56,7 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		if l == nil {
 			continue
 		}
-		c := dashboard.Container{ID: id, Name: l.name, State: l.state, Status: cleanStatus(l.status), Compose: composeName(l)}
+		c := dashboard.Container{ID: id, Name: l.name, State: l.state, Status: cleanStatus(l.status), Compose: composeName(l), ComposeProject: l.composeProject, ComposeService: l.composeService}
 		if bm := m.baseMetrics[id]; bm != nil {
 			c.CPU = humanDuration(bm.cpuTotal)
 			c.Memory = humanBytes(int64(bm.memUsageBytes))
@@ -114,7 +116,31 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		})
 	}
 
-	return dashboard.Data{Summary: summary, Containers: containers, Images: images, Volumes: volumes}
+	return dashboard.Data{Summary: summary, Containers: containers, ContainerGroups: groupContainers(containers), Images: images, Volumes: volumes}
+}
+
+func groupContainers(containers []dashboard.Container) []dashboard.ContainerGroup {
+	sort.Slice(containers, func(i, j int) bool { return containers[i].Name < containers[j].Name })
+	byProject := make(map[string][]dashboard.Container)
+	var projects []string
+	for _, c := range containers {
+		if _, ok := byProject[c.ComposeProject]; !ok {
+			projects = append(projects, c.ComposeProject)
+		}
+		byProject[c.ComposeProject] = append(byProject[c.ComposeProject], c)
+	}
+	sort.Strings(projects)
+	var out []dashboard.ContainerGroup
+	for _, p := range projects {
+		if p == "" {
+			continue
+		}
+		out = append(out, dashboard.ContainerGroup{Name: p, Containers: byProject[p]})
+	}
+	if len(byProject[""]) > 0 {
+		out = append(out, dashboard.ContainerGroup{Name: "", Containers: byProject[""]})
+	}
+	return out
 }
 
 func cleanStatus(status string) string {

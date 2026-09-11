@@ -58,6 +58,19 @@ func logLevelParse(level string) slog.Level {
 	}
 }
 
+// Validation of container ID passed to API for logs
+func checkContainerID(id string) bool {
+	if id == "" || len(id) > 64 {
+		return false
+	}
+	for _, c := range id {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
+			return false
+		}
+	}
+	return true
+}
+
 func main() {
 	// Health check on /health endpoint using built-in probe for scratch image
 	if len(os.Args) > 1 && os.Args[1] == "--healthcheck" {
@@ -242,6 +255,20 @@ func main() {
 		}
 	})
 
+	// Endpoint: /health
+	httpServerMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+		_, err := dockerClient.Ping(ctx)
+		if err != nil {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = fmt.Fprintln(w, "docker daemon is unavailable")
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = fmt.Fprintln(w, "ok")
+	})
+
 	// Endpoint: /dashboard
 	httpServerMux.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
 		refreshMetrics(r.Context())
@@ -253,6 +280,12 @@ func main() {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = fmt.Fprintln(w, html)
+	})
+
+
+	// Endpoint: / (redirect to dashboard)
+	httpServerMux.HandleFunc("/{$}", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
 	})
 
 	// Endpoint: /api/dashboard/refresh
@@ -268,23 +301,72 @@ func main() {
 		_ = json.NewEncoder(w).Encode(Refresh)
 	})
 
-	// Endpoint: / (redirect to dashboard)
-	httpServerMux.HandleFunc("/{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/dashboard", http.StatusFound)
-	})
-
-	// Endpoint: /health
-	httpServerMux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
-		defer cancel()
-		_, err := dockerClient.Ping(ctx)
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = fmt.Fprintln(w, "docker daemon is unavailable")
+	// Endpoint: /api/containers/{id}/logs
+	httpServerMux.HandleFunc("/api/containers/{id}/logs", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if !checkContainerID(id) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = fmt.Fprintln(w, "invalid container id")
 			return
 		}
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-		_, _ = fmt.Fprintln(w, "ok")
+		q := r.URL.Query()
+		tail := 200
+		if v := q.Get("tail"); v != "" {
+			parsed, err := strconv.Atoi(v)
+			if err == nil && parsed > 0 {
+				if parsed > 5000 {
+					parsed = 5000
+				}
+				tail = parsed
+			}
+		}
+		stream := strings.ToLower(q.Get("stream"))
+		if stream != "stdout" && stream != "stderr" {
+			stream = "all"
+		}
+		var since time.Time
+		if v := q.Get("since"); v != "" {
+			if t, err := time.Parse(time.RFC3339Nano, v); err == nil {
+				since = t
+			}
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		defer cancel()
+		lines, truncated, err := logs.ReadContainerLogs(ctx, dockerClient, id, logs.ReadLogsOptions{
+			Tail:   tail,
+			Since:  since,
+			Stream: stream,
+		})
+		if err != nil {
+			if client.IsErrNotFound(err) {
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = fmt.Fprintln(w, "container not found")
+				return
+			}
+			logger.Error("failed to read container logs", "container", id, "error", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = fmt.Fprintln(w, "failed to read container logs")
+			return
+		}
+		type apiLogLine struct {
+			Timestamp string `json:"ts"`
+			Stream    string `json:"stream"`
+			Line      string `json:"line"`
+		}
+		out := make([]apiLogLine, 0, len(lines))
+		for _, l := range lines {
+			out = append(out, apiLogLine{
+				Timestamp: l.Timestamp.UTC().Format(time.RFC3339Nano),
+				Stream:    l.Stream,
+				Line:      l.Line,
+			})
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(w).Encode(struct {
+			Container string       `json:"container"`
+			Logs      []apiLogLine `json:"logs"`
+			Truncated bool         `json:"truncated"`
+		}{Container: id, Logs: out, Truncated: truncated})
 	})
 
 	logSrv := loggingMiddleware(exporter, httpServerMux, logger)
