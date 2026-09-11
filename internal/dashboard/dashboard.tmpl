@@ -614,7 +614,7 @@
             type="button"
             title="Collapse all stacks"
           >
-➖ Collapse
+            ➖ Collapse
           </button>
         </div>
         <table>
@@ -680,9 +680,7 @@
       </div>
       {{else}}
       <div class="empty">No images</div>
-      {{end}}
-
-      {{if .Summary.ShowVolumes}}
+      {{end}} {{if .Summary.ShowVolumes}}
       <h2>Volumes</h2>
       {{if .Volumes}}
       <div class="table-wrap">
@@ -711,8 +709,7 @@
       </div>
       {{else}}
       <div class="empty">No volumes</div>
-      {{end}}
-      {{end}}
+      {{end}} {{end}}
     </main>
     <button id="backTop" type="button" title="Back to top">&uarr;</button>
     <div id="logsModal" class="modal-mask" hidden>
@@ -978,8 +975,7 @@
         var comp = parseQuery(raw);
         var q = raw.toLowerCase();
         getGroups(table).forEach(function (g) {
-          var collapsed =
-            g.header && g.header.classList.contains("collapsed");
+          var collapsed = g.header && g.header.classList.contains("collapsed");
           var visible = false;
           g.rows.forEach(function (r) {
             var show = rowMatches(r, q, comp);
@@ -1136,7 +1132,7 @@
         function paused() {
           return localStorage.getItem(pausedKey) === "1";
         }
-function update(data) {
+        function update(data) {
           var cards = document.getElementById("cards");
           if (cards && data.cards) {
             cards.innerHTML = data.cards;
@@ -1447,8 +1443,7 @@ function update(data) {
     <div class="label">Updates</div>
     <div class="value orange">{{.Summary.Updates}}</div>
   </div>
-  {{end}}
-  {{if .Summary.ShowVolumes}}
+  {{end}} {{if .Summary.ShowVolumes}}
   <div class="card">
     <div class="label">Volumes</div>
     <div class="value blue">{{.Summary.Volumes}}</div>
@@ -1456,6 +1451,10 @@ function update(data) {
   {{end}}
 </div>
 <div class="cards">
+  <div class="card">
+    <div class="label">CPU load of {{.Summary.NumberCPU}} cores</div>
+    <div class="value orange">{{.Summary.CPU}}</div>
+  </div>
   <div class="card">
     <div class="label">Memory used</div>
     <div class="value orange">{{.Summary.MemoryUsed}}</div>
@@ -1499,11 +1498,12 @@ function update(data) {
   <td><span class="badge {{.StateClass}}">{{.State}}</span></td>
   <td>{{.Status}}</td>
   <td>
-    {{if .ComposeService}}{{.ComposeService}}{{else}}<span class="muted"
-      >-</span
+    {{if .ComposeService}}{{.ComposeService}}{{else}}<span class="muted">-</span
     >{{end}}
   </td>
-  <td>{{if .HasStats}}{{.CPU}}{{else}}<span class="muted">-</span>{{end}}</td>
+  <td title="{{if .HasStats}}{{.CPUTotal}} total{{end}}">
+    {{if .HasStats}}{{.CPU}}{{else}}<span class="muted">-</span>{{end}}
+  </td>
   <td>
     {{if .HasStats}}{{.Memory}}{{else}}<span class="muted">-</span>{{end}}
   </td>

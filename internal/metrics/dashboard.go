@@ -49,6 +49,7 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		Updates:     updateCount(m.imageUpdateMetrics),
 		ShowUpdates: m.GetImageUpdateMetrics,
 		ShowVolumes: m.GetVolumeMetrics,
+		CPU:         cpuPercentString(m.cpuHostPerc()),
 	}
 
 	containers := make([]dashboard.Container, 0, len(m.Labels))
@@ -58,7 +59,8 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		}
 		c := dashboard.Container{ID: id, Name: l.name, State: l.state, Status: cleanStatus(l.status), Compose: composeName(l), ComposeProject: l.composeProject, ComposeService: l.composeService}
 		if bm := m.baseMetrics[id]; bm != nil {
-			c.CPU = humanDuration(bm.cpuTotal)
+			c.CPU = cpuPercentString(m.cpuContainerPerc(id, bm.cpuTotal))
+			c.CPUTotal = humanDuration(bm.cpuTotal)
 			c.Memory = humanBytes(int64(bm.memUsageBytes))
 			c.NetRx = humanBytes(int64(bm.netReceiveBytes))
 			c.NetTx = humanBytes(int64(bm.netTransmitBytes))
@@ -214,4 +216,56 @@ func humanDuration(seconds float64) string {
 		return fmt.Sprintf("%.1fm", seconds/60)
 	}
 	return fmt.Sprintf("%.2fh", seconds/3600)
+}
+
+func (m *Metrics) cpuContainerPerc(id string, curCPU float64) (float64, bool) {
+	prev, ok := m.cpuPrevious[id]
+	if !ok {
+		return 0, false
+	}
+	interval := m.cpuCurrentTime.Sub(m.cpuPreviousTime)
+	if interval <= 0 {
+		return 0, false
+	}
+	delta := curCPU - prev
+	if delta < 0 {
+		return 0, false
+	}
+	return delta / interval.Seconds() * 100, true
+}
+
+func (m *Metrics) cpuHostPerc() (float64, bool) {
+	if m.Info.numberCPU <= 0 {
+		return 0, false
+	}
+	var delta float64
+	for id, bm := range m.baseMetrics {
+		if bm == nil {
+			continue
+		}
+		prev, ok := m.cpuPrevious[id]
+		if !ok {
+			continue
+		}
+		d := bm.cpuTotal - prev
+		if d < 0 {
+			continue
+		}
+		delta += d
+	}
+	if delta <= 0 {
+		return 0, false
+	}
+	interval := m.cpuCurrentTime.Sub(m.cpuPreviousTime)
+	if interval <= 0 {
+		return 0, false
+	}
+	return delta / interval.Seconds() / float64(m.Info.numberCPU) * 100, true
+}
+
+func cpuPercentString(p float64, ok bool) string {
+	if !ok {
+		return "-"
+	}
+	return fmt.Sprintf("%.1f%%", p)
 }

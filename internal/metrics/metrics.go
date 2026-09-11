@@ -21,6 +21,9 @@ type Metrics struct {
 	Info                  *Info
 	Labels                map[string]*Labels
 	baseMetrics           map[string]*BaseMetrics
+	cpuPrevious           map[string]float64
+	cpuPreviousTime       time.Time
+	cpuCurrentTime        time.Time
 	inspectMetrics        map[string]*InspectMetric
 	imageMetrics          []imageMetric
 	imageUpdateMetrics    []imageUpdateMetrics
@@ -386,6 +389,19 @@ func (m *Metrics) getInspectMetrics(ctx context.Context, dockerClient *client.Cl
 
 // Main function for getting metrics
 func (m *Metrics) GetMetrics(ctx context.Context, dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
+	// Save previous CPU values ​​for load calculation for the built-in Dashboard
+	if len(m.baseMetrics) > 0 {
+		lastCPU := make(map[string]float64, len(m.baseMetrics))
+		for id, bm := range m.baseMetrics {
+			if bm != nil {
+				lastCPU[id] = bm.cpuTotal
+			}
+		}
+		m.cpuPrevious = lastCPU
+		m.cpuPreviousTime = m.cpuCurrentTime
+	}
+	m.cpuCurrentTime = time.Now()
+
 	// Get a list of containers with status information and all container ID array
 	m.Labels, m.idRunning = m.getContainers(ctx, dockerClient, true, logger)
 

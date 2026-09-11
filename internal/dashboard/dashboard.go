@@ -39,6 +39,7 @@ type Summary struct {
 	Volumes     int
 	ShowUpdates bool
 	ShowVolumes bool
+	CPU         string
 }
 
 type Container struct {
@@ -50,6 +51,7 @@ type Container struct {
 	ComposeProject string
 	ComposeService string
 	CPU            string
+	CPUTotal       string
 	Memory         string
 	NetRx          string
 	NetTx          string
