@@ -35,6 +35,10 @@ Go to Dashboard: `http://localhost:9333`.
 
 ![](/img/dashboard.jpg)
 
+The dashboard allows you to view container logs in real time, with support for content filtering.
+
+![](/img/dashboard-logs.jpg)
+
 ## Manual setup
 
 ### Exporter
