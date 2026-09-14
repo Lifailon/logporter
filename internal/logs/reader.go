@@ -37,6 +37,9 @@ func parseLogFrames(r io.Reader, fn func(stream string, ts time.Time, line strin
 
 	for {
 		if _, err := io.ReadFull(r, header); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return err
 		}
 		size := int(binary.BigEndian.Uint32(header[4:8]))
@@ -114,7 +117,7 @@ func ReadContainerLogs(ctx context.Context, dockerClient *client.Client, id stri
 		lines = append(lines, LogLine{Stream: stream, Timestamp: ts, Line: line})
 		return nil
 	})
-	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, errStop) {
+	if err != nil && !errors.Is(err, errStop) {
 		return nil, truncated, err
 	}
 	return lines, truncated, nil

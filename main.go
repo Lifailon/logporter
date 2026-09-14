@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containerd/errdefs"
 	"github.com/docker/docker/client"
 
 	"logporter/internal/dashboard"
@@ -282,7 +283,6 @@ func main() {
 		_, _ = fmt.Fprintln(w, html)
 	})
 
-
 	// Endpoint: / (redirect to dashboard)
 	httpServerMux.HandleFunc("/{$}", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/dashboard", http.StatusFound)
@@ -338,7 +338,7 @@ func main() {
 			Stream: stream,
 		})
 		if err != nil {
-			if client.IsErrNotFound(err) {
+			if errdefs.IsNotFound(err) {
 				w.WriteHeader(http.StatusNotFound)
 				_, _ = fmt.Fprintln(w, "container not found")
 				return
