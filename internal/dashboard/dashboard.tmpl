@@ -229,6 +229,10 @@
         outline: none;
         border-color: var(--blue);
       }
+      .search.invalid,
+      .search.invalid:focus {
+        border-color: var(--red);
+      }
       table {
         width: 100%;
         min-width: 100%;
@@ -767,6 +771,17 @@
             autocomplete="off"
             title="Filter loaded log lines by content"
           />
+          <label
+            title="Match all space-separated words as substrings, anywhere in the line"
+            ><input type="checkbox" id="logsAnd" /> AND</label
+          >
+          <label
+            title="Match any space-separated word as substring, anywhere in the line"
+            ><input type="checkbox" id="logsOr" /> OR</label
+          >
+          <label title="Match a case-insensitive regular expression"
+            ><input type="checkbox" id="logsRegex" /> Regex</label
+          >
           <select id="logsTail" class="theme-btn" title="Number of lines">
             <option value="100">100 lines</option>
             <option value="200" selected>200 lines</option>
@@ -1266,6 +1281,9 @@
           selErr = $("logsStderr"),
           selFollow = $("logsFollow"),
           selWrap = $("logsWrap"),
+          selAnd = $("logsAnd"),
+          selOr = $("logsOr"),
+          selRegex = $("logsRegex"),
           filter = $("logsFilter"),
           jump = $("logsJump");
         var cur = null,
@@ -1304,40 +1322,130 @@
           clearInterval(timer);
           timer = null;
         }
-        function mark(text, q) {
+        function mark(text, terms, re) {
           var line = text.textContent;
           text.textContent = "";
-          if (!q) {
+          var ranges = [];
+          if (re) {
+            var g = new RegExp(re.source, "gi");
+            var m;
+            while ((m = g.exec(line)) !== null) {
+              if (m[0].length === 0) {
+                g.lastIndex++;
+                continue;
+              }
+              ranges.push([m.index, m.index + m[0].length]);
+            }
+          } else if (terms && terms.length) {
+            var low = line.toLowerCase();
+            terms.forEach(function (t) {
+              var pos = 0,
+                i;
+              while ((i = low.indexOf(t, pos)) !== -1) {
+                ranges.push([i, i + t.length]);
+                pos = i + t.length;
+              }
+            });
+          }
+          if (!ranges.length) {
             text.appendChild(document.createTextNode(line));
             return;
           }
-          var low = line.toLowerCase(),
-            pos = 0,
-            i;
-          while ((i = low.indexOf(q, pos)) !== -1) {
-            if (i > pos) {
-              text.appendChild(document.createTextNode(line.slice(pos, i)));
+          ranges.sort(function (a, b) {
+            return a[0] - b[0];
+          });
+          var merged = [];
+          ranges.forEach(function (r) {
+            var last = merged[merged.length - 1];
+            if (last && r[0] <= last[1]) {
+              if (r[1] > last[1]) last[1] = r[1];
+            } else {
+              merged.push([r[0], r[1]]);
             }
+          });
+          var pos = 0;
+          merged.forEach(function (r) {
+            if (r[0] > pos)
+              text.appendChild(document.createTextNode(line.slice(pos, r[0])));
             var m = document.createElement("mark");
-            m.textContent = line.slice(i, i + q.length);
+            m.textContent = line.slice(r[0], r[1]);
             text.appendChild(m);
-            pos = i + q.length;
-          }
+            pos = r[1];
+          });
           if (pos < line.length) {
             text.appendChild(document.createTextNode(line.slice(pos)));
           }
         }
         function filterLines() {
-          var q = filter.value.toLowerCase();
+          var raw = filter.value;
+          var filterAndMode = selAnd.checked;
+          var filterOrMode = selOr.checked;
+          var filterRegexMode =
+            selRegex.checked && !selAnd.checked && !selOr.checked;
+          var re = null;
+          var invalid = false;
+          if (filterRegexMode && raw) {
+            try {
+              re = new RegExp(raw, "i");
+            } catch (e) {
+              invalid = true;
+            }
+          }
+          filter.classList.toggle("invalid", invalid);
+          var terms =
+            filterAndMode || filterOrMode
+              ? raw
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .map(function (t) {
+                    return t.toLowerCase();
+                  })
+              : [raw.toLowerCase()];
           out.querySelectorAll(".log-line").forEach(function (row) {
             var err = row.classList.contains("stderr");
             var text = row.querySelector(".log-text");
-            var ok =
-              (err ? selErr.checked : selOut.checked) &&
-              (!q || text.textContent.toLowerCase().indexOf(q) !== -1);
-            row.hidden = !ok;
-            if (ok) mark(text, q);
+            var body = text.textContent;
+            var ok = err ? selErr.checked : selOut.checked;
+            if (!ok) {
+              row.hidden = true;
+              return;
+            }
+            if (!raw.trim()) {
+              row.hidden = false;
+              text.textContent = body;
+              return;
+            }
+            if (invalid) {
+              row.hidden = true;
+              return;
+            }
+            var match;
+            if (filterRegexMode) {
+              re.lastIndex = 0;
+              match = re.test(body);
+            } else if (filterOrMode || filterAndMode) {
+              var lower = body.toLowerCase();
+              var any = terms.some(function (t) {
+                return lower.indexOf(t) !== -1;
+              });
+              match = filterOrMode
+                ? any
+                : terms.every(function (t) {
+                    return lower.indexOf(t) !== -1;
+                  });
+            } else {
+              match = body.toLowerCase().indexOf(raw.toLowerCase()) !== -1;
+            }
+            row.hidden = !match;
+            if (match) mark(text, terms, filterRegexMode ? re : null);
           });
+          updateCount();
+        }
+        function updateCount() {
+          var total = out.querySelectorAll(".log-line").length;
+          var vis = out.querySelectorAll(".log-line:not([hidden])").length;
+          countEl.textContent =
+            vis < total ? vis + " / " + total + " lines" : total + " lines";
         }
         function append(data) {
           var frag = document.createDocumentFragment();
@@ -1365,8 +1473,7 @@
             if (ts > lastTs) lastTs = ts;
           });
           out.appendChild(frag);
-          countEl.textContent =
-            out.querySelectorAll(".log-line").length + " lines";
+          updateCount();
         }
         function load() {
           if (!cur || stream() === "none") return;
@@ -1441,6 +1548,27 @@
         });
         selWrap.addEventListener("change", function () {
           out.classList.toggle("nowrap", !selWrap.checked);
+        });
+        selAnd.addEventListener("change", function () {
+          if (selAnd.checked) {
+            selOr.checked = false;
+            selRegex.checked = false;
+          }
+          filterLines();
+        });
+        selOr.addEventListener("change", function () {
+          if (selOr.checked) {
+            selAnd.checked = false;
+            selRegex.checked = false;
+          }
+          filterLines();
+        });
+        selRegex.addEventListener("change", function () {
+          if (selRegex.checked) {
+            selAnd.checked = false;
+            selOr.checked = false;
+          }
+          filterLines();
         });
         filter.addEventListener("input", filterLines);
         mask.addEventListener("click", function (e) {
