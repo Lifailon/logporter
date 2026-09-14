@@ -782,6 +782,9 @@
           <label title="Match a case-insensitive regular expression"
             ><input type="checkbox" id="logsRegex" /> Regex</label
           >
+          <label title="Show one line before and after each match"
+            ><input type="checkbox" id="logsContext" /> Context</label
+          >
           <select id="logsTail" class="theme-btn" title="Number of lines">
             <option value="100">100 lines</option>
             <option value="200" selected>200 lines</option>
@@ -1281,6 +1284,7 @@
           selErr = $("logsStderr"),
           selFollow = $("logsFollow"),
           selWrap = $("logsWrap"),
+          selContext = $("logsContext"),
           selAnd = $("logsAnd"),
           selOr = $("logsOr"),
           selRegex = $("logsRegex"),
@@ -1401,24 +1405,18 @@
                     return t.toLowerCase();
                   })
               : [raw.toLowerCase()];
-          out.querySelectorAll(".log-line").forEach(function (row) {
+          var hasFilter = raw.trim() !== "" && !invalid;
+          var rows = out.querySelectorAll(".log-line");
+          var allowed = new Array(rows.length);
+          var matched = new Array(rows.length);
+          var i, row;
+          for (i = 0; i < rows.length; i++) {
+            row = rows[i];
             var err = row.classList.contains("stderr");
-            var text = row.querySelector(".log-text");
-            var body = text.textContent;
-            var ok = err ? selErr.checked : selOut.checked;
-            if (!ok) {
-              row.hidden = true;
-              return;
-            }
-            if (!raw.trim()) {
-              row.hidden = false;
-              text.textContent = body;
-              return;
-            }
-            if (invalid) {
-              row.hidden = true;
-              return;
-            }
+            var body = row.querySelector(".log-text").textContent;
+            allowed[i] = err ? selErr.checked : selOut.checked;
+            matched[i] = false;
+            if (!allowed[i] || !raw.trim() || invalid) continue;
             var match;
             if (filterRegexMode) {
               re.lastIndex = 0;
@@ -1436,9 +1434,28 @@
             } else {
               match = body.toLowerCase().indexOf(raw.toLowerCase()) !== -1;
             }
-            row.hidden = !match;
-            if (match) mark(text, terms, filterRegexMode ? re : null);
-          });
+            matched[i] = match;
+          }
+          var ctx = selContext.checked && hasFilter;
+          for (i = 0; i < rows.length; i++) {
+            var text = rows[i].querySelector(".log-text");
+            var show;
+            if (!allowed[i]) {
+              show = false;
+            } else if (!raw.trim()) {
+              show = true;
+            } else if (invalid) {
+              show = false;
+            } else {
+              show = matched[i] || (ctx && (matched[i - 1] || matched[i + 1]));
+            }
+            rows[i].hidden = !show;
+            if (matched[i]) {
+              mark(text, terms, filterRegexMode ? re : null);
+            } else if (show) {
+              text.textContent = text.textContent;
+            }
+          }
           updateCount();
         }
         function updateCount() {
@@ -1549,6 +1566,7 @@
         selWrap.addEventListener("change", function () {
           out.classList.toggle("nowrap", !selWrap.checked);
         });
+        selContext.addEventListener("change", filterLines);
         selAnd.addEventListener("change", function () {
           if (selAnd.checked) {
             selOr.checked = false;
