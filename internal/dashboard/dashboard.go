@@ -40,6 +40,10 @@ type Summary struct {
 	ShowUpdates bool
 	ShowVolumes bool
 	CPU         string
+	NetRX       string
+	NetTX       string
+	IORead      string
+	IOWrite     string
 }
 
 type Container struct {
@@ -53,10 +57,14 @@ type Container struct {
 	CPU            string
 	CPUTotal       string
 	Memory         string
-	NetRx          string
-	NetTx          string
+	NetRX          string
+	NetTX          string
 	IORead         string
 	IOWrite        string
+	NetRxTotal     string
+	NetTxTotal     string
+	IOReadTotal    string
+	IOWriteTotal   string
 	PIDs           string
 	Healthy        string
 	ExitCode       string

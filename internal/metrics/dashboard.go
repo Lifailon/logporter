@@ -53,6 +53,8 @@ func (m *Metrics) DashboardData() dashboard.Data {
 	}
 
 	containers := make([]dashboard.Container, 0, len(m.Labels))
+	var netRX, netTX, ioRead, ioWrite float64
+	netStatsReady := false
 	for id, l := range m.Labels {
 		if l == nil {
 			continue
@@ -62,10 +64,23 @@ func (m *Metrics) DashboardData() dashboard.Data {
 			c.CPU = cpuPercentString(m.cpuContainerPerc(id, bm.cpuTotal))
 			c.CPUTotal = humanDuration(bm.cpuTotal)
 			c.Memory = humanBytes(int64(bm.memUsageBytes))
-			c.NetRx = humanBytes(int64(bm.netReceiveBytes))
-			c.NetTx = humanBytes(int64(bm.netTransmitBytes))
-			c.IORead = humanBytes(int64(bm.ioReadBytes))
-			c.IOWrite = humanBytes(int64(bm.ioWriteBytes))
+			if rx, tx, rd, wr, ok := m.containerNSRate(id, int64(bm.netReceiveBytes), int64(bm.netTransmitBytes), int64(bm.ioReadBytes), int64(bm.ioWriteBytes)); ok {
+				c.NetRX = humanBytesPerSec(rx)
+				c.NetTX = humanBytesPerSec(tx)
+				c.IORead = humanBytesPerSec(rd)
+				c.IOWrite = humanBytesPerSec(wr)
+				netRX += rx
+				netTX += tx
+				ioRead += rd
+				ioWrite += wr
+				netStatsReady = true
+			} else {
+				c.NetRX, c.NetTX, c.IORead, c.IOWrite = "-", "-", "-", "-"
+			}
+			c.NetRxTotal = humanBytes(int64(bm.netReceiveBytes))
+			c.NetTxTotal = humanBytes(int64(bm.netTransmitBytes))
+			c.IOReadTotal = humanBytes(int64(bm.ioReadBytes))
+			c.IOWriteTotal = humanBytes(int64(bm.ioWriteBytes))
 			c.PIDs = strconv.Itoa(bm.pids)
 			c.HasStats = true
 		}
@@ -80,6 +95,15 @@ func (m *Metrics) DashboardData() dashboard.Data {
 			c.Mounts = strconv.Itoa(in.volumeMounts) + " vol / " + strconv.Itoa(in.bindMounts) + " bind"
 		}
 		containers = append(containers, c)
+	}
+
+	if netStatsReady {
+		summary.NetRX = humanBytesInt(int64(netRX))
+		summary.NetTX = humanBytesInt(int64(netTX))
+		summary.IORead = humanBytesInt(int64(ioRead))
+		summary.IOWrite = humanBytesInt(int64(ioWrite))
+	} else {
+		summary.NetRX, summary.NetTX, summary.IORead, summary.IOWrite = "-", "-", "-", "-"
 	}
 
 	updates := make(map[string]imageUpdateMetrics, len(m.imageUpdateMetrics))
@@ -205,6 +229,19 @@ func humanBytes(v int64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(v)/float64(div), "KMGTPE"[exp])
 }
 
+func humanBytesInt(v int64) string {
+	const unit = int64(1024)
+	if v < unit {
+		return fmt.Sprintf("%d B", v)
+	}
+	div, exp := unit, 0
+	for n := v / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.0f %ciB", float64(v)/float64(div), "KMGTPE"[exp])
+}
+
 func humanDuration(seconds float64) string {
 	if seconds < 1 {
 		return fmt.Sprintf("%.1fs", seconds)
@@ -219,7 +256,7 @@ func humanDuration(seconds float64) string {
 }
 
 func (m *Metrics) cpuContainerPerc(id string, curCPU float64) (float64, bool) {
-	prev, ok := m.cpuPrevious[id]
+	prev, ok := m.previousMetrics[id]
 	if !ok {
 		return 0, false
 	}
@@ -227,7 +264,7 @@ func (m *Metrics) cpuContainerPerc(id string, curCPU float64) (float64, bool) {
 	if interval <= 0 {
 		return 0, false
 	}
-	delta := curCPU - prev
+	delta := curCPU - prev.cpu
 	if delta < 0 {
 		return 0, false
 	}
@@ -243,11 +280,11 @@ func (m *Metrics) cpuHostPerc() (float64, bool) {
 		if bm == nil {
 			continue
 		}
-		prev, ok := m.cpuPrevious[id]
+		prev, ok := m.previousMetrics[id]
 		if !ok {
 			continue
 		}
-		d := bm.cpuTotal - prev
+		d := bm.cpuTotal - prev.cpu
 		if d < 0 {
 			continue
 		}
@@ -267,5 +304,28 @@ func cpuPercentString(p float64, ok bool) string {
 	if !ok {
 		return "-"
 	}
-	return fmt.Sprintf("%.1f%%", p)
+	return fmt.Sprintf("%.1f %%", p)
+}
+
+func (m *Metrics) containerNSRate(id string, curRX, curTX, curRead, curWrite int64) (float64, float64, float64, float64, bool) {
+	prev, ok := m.previousMetrics[id]
+	if !ok {
+		return 0, 0, 0, 0, false
+	}
+	interval := m.cpuCurrentTime.Sub(m.cpuPreviousTime).Seconds()
+	if interval <= 0 {
+		return 0, 0, 0, 0, false
+	}
+	rx := float64(curRX-prev.netRX) / interval
+	tx := float64(curTX-prev.netTX) / interval
+	rd := float64(curRead-prev.ioRead) / interval
+	wr := float64(curWrite-prev.ioWrite) / interval
+	if rx < 0 || tx < 0 || rd < 0 || wr < 0 {
+		return 0, 0, 0, 0, false
+	}
+	return rx, tx, rd, wr, true
+}
+
+func humanBytesPerSec(bps float64) string {
+	return humanBytes(int64(bps)) + "/s"
 }

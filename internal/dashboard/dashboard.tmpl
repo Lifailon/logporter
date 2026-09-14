@@ -179,9 +179,11 @@
       .card .value.blue {
         color: var(--blue);
       }
+      .card .value.rate {
+        line-height: 1.3;
+        white-space: nowrap;
+      }
       .card .value.hostname {
-        font-size: 18px;
-        font-weight: 600;
         line-height: 1.3;
         overflow-wrap: anywhere;
       }
@@ -549,6 +551,41 @@
         background: #ffd000;
         color: #1f2430;
         border-radius: 2px;
+      }
+      [data-tip] {
+        cursor: help;
+      }
+      #ui-tooltip {
+        position: fixed;
+        z-index: 1000;
+        padding: 6px 10px;
+        background: #2b2b33;
+        color: #f0f0f0;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        border-radius: 6px;
+        font-size: 12px;
+        line-height: 1.4;
+        white-space: nowrap;
+        pointer-events: none;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        opacity: 0;
+        visibility: hidden;
+        transition:
+          opacity 0.15s ease,
+          visibility 0.15s ease;
+      }
+      #ui-tooltip.show {
+        opacity: 1;
+        visibility: visible;
+      }
+      #ui-tooltip::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        margin-left: -6px;
+        top: 100%;
+        border: 6px solid transparent;
+        border-top-color: #2b2b33;
       }
       @media (max-width: 900px) {
         body {
@@ -1417,6 +1454,36 @@
           if (e.key === "Escape" && !mask.hidden) close();
         });
       })();
+      (function () {
+        var tip = document.createElement("div");
+        tip.id = "ui-tooltip";
+        document.body.appendChild(tip);
+        document.addEventListener("mouseover", function (e) {
+          var el = e.target.closest ? e.target.closest("[data-tip]") : null;
+          if (!el) return;
+          var r = el.getBoundingClientRect();
+          tip.textContent = el.getAttribute("data-tip");
+          var x = r.left + r.width / 2;
+          var half = tip.offsetWidth / 2;
+          if (x - half < 8) x = half + 8;
+          if (x + half > window.innerWidth - 8)
+            x = window.innerWidth - half - 8;
+          tip.style.left = x + "px";
+          if (r.top < 110) {
+            tip.style.transform = "translate(-50%, 0)";
+            tip.style.top = r.bottom + 10 + "px";
+          } else {
+            tip.style.transform = "translate(-50%, -100%)";
+            tip.style.top = r.top - 10 + "px";
+          }
+          tip.classList.add("show");
+        });
+        document.addEventListener("mouseout", function (e) {
+          var to = e.relatedTarget;
+          if (to && to.closest && to.closest("[data-tip]")) return;
+          tip.classList.remove("show");
+        });
+      })();
     </script>
   </body>
 </html>
@@ -1434,6 +1501,12 @@
     <div class="label">Stopped</div>
     <div class="value red">{{.Summary.Stopped}}</div>
   </div>
+  {{if .Summary.ShowVolumes}}
+  <div class="card">
+    <div class="label">Volumes</div>
+    <div class="value blue">{{.Summary.Volumes}}</div>
+  </div>
+  {{end}}
   <div class="card">
     <div class="label">Images</div>
     <div class="value blue">{{.Summary.Images}}</div>
@@ -1443,11 +1516,6 @@
     <div class="label">Updates</div>
     <div class="value orange">{{.Summary.Updates}}</div>
   </div>
-  {{end}} {{if .Summary.ShowVolumes}}
-  <div class="card">
-    <div class="label">Volumes</div>
-    <div class="value blue">{{.Summary.Volumes}}</div>
-  </div>
   {{end}}
 </div>
 <div class="cards">
@@ -1456,12 +1524,20 @@
     <div class="value orange">{{.Summary.CPU}}</div>
   </div>
   <div class="card">
-    <div class="label">Memory used</div>
-    <div class="value orange">{{.Summary.MemoryUsed}}</div>
+    <div class="label">Memory used / total</div>
+    <div class="value orange">
+      {{.Summary.MemoryUsed}} / {{.Summary.MemoryTotal}}
+    </div>
   </div>
   <div class="card">
-    <div class="label">Memory total</div>
-    <div class="value blue">{{.Summary.MemoryTotal}}</div>
+    <div class="label">NET RX / TX</div>
+    <div class="value orange rate">{{.Summary.NetRX}} / {{.Summary.NetTX}}</div>
+  </div>
+  <div class="card">
+    <div class="label">IO READ / WRITE</div>
+    <div class="value orange rate">
+      {{.Summary.IORead}} / {{.Summary.IOWrite}}
+    </div>
   </div>
   {{if .Summary.ShowVolumes}}
   <div class="card">
@@ -1501,18 +1577,22 @@
     {{if .ComposeService}}{{.ComposeService}}{{else}}<span class="muted">-</span
     >{{end}}
   </td>
-  <td title="{{if .HasStats}}{{.CPUTotal}} total{{end}}">
+  <td data-tip="{{if .HasStats}}Total CPU: {{.CPUTotal}}{{end}}">
     {{if .HasStats}}{{.CPU}}{{else}}<span class="muted">-</span>{{end}}
   </td>
   <td>
     {{if .HasStats}}{{.Memory}}{{else}}<span class="muted">-</span>{{end}}
   </td>
-  <td>{{if .HasStats}}{{.NetRx}}{{else}}<span class="muted">-</span>{{end}}</td>
-  <td>{{if .HasStats}}{{.NetTx}}{{else}}<span class="muted">-</span>{{end}}</td>
-  <td>
+  <td data-tip="{{if .HasStats}}Total Net Rx: {{.NetRxTotal}}{{end}}">
+    {{if .HasStats}}{{.NetRX}}{{else}}<span class="muted">-</span>{{end}}
+  </td>
+  <td data-tip="{{if .HasStats}}Total Net Tx: {{.NetTxTotal}}{{end}}">
+    {{if .HasStats}}{{.NetTX}}{{else}}<span class="muted">-</span>{{end}}
+  </td>
+  <td data-tip="{{if .HasStats}}Total IO read: {{.IOReadTotal}}{{end}}">
     {{if .HasStats}}{{.IORead}}{{else}}<span class="muted">-</span>{{end}}
   </td>
-  <td>
+  <td data-tip="{{if .HasStats}}Total IO write: {{.IOWriteTotal}}{{end}}">
     {{if .HasStats}}{{.IOWrite}}{{else}}<span class="muted">-</span>{{end}}
   </td>
   <td>{{if .HasStats}}{{.PIDs}}{{else}}<span class="muted">-</span>{{end}}</td>

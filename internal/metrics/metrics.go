@@ -21,7 +21,7 @@ type Metrics struct {
 	Info                  *Info
 	Labels                map[string]*Labels
 	baseMetrics           map[string]*BaseMetrics
-	cpuPrevious           map[string]float64
+	previousMetrics       map[string]previousMetrics
 	cpuPreviousTime       time.Time
 	cpuCurrentTime        time.Time
 	inspectMetrics        map[string]*InspectMetric
@@ -65,6 +65,14 @@ type Labels struct {
 type customLabelsKV struct {
 	key   string
 	value string
+}
+
+type previousMetrics struct {
+	cpu     float64
+	netRX   int64
+	netTX   int64
+	ioRead  int64
+	ioWrite int64
 }
 
 type BaseMetrics struct {
@@ -389,15 +397,21 @@ func (m *Metrics) getInspectMetrics(ctx context.Context, dockerClient *client.Cl
 
 // Main function for getting metrics
 func (m *Metrics) GetMetrics(ctx context.Context, dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
-	// Save previous CPU values ​​for load calculation for the built-in Dashboard
+	// Save previous CPU, NET and IO values ​​for the load calculation for the built-in Dashboard
 	if len(m.baseMetrics) > 0 {
-		lastCPU := make(map[string]float64, len(m.baseMetrics))
+		previous := make(map[string]previousMetrics, len(m.baseMetrics))
 		for id, bm := range m.baseMetrics {
 			if bm != nil {
-				lastCPU[id] = bm.cpuTotal
+				previous[id] = previousMetrics{
+					cpu:     bm.cpuTotal,
+					netRX:   int64(bm.netReceiveBytes),
+					netTX:   int64(bm.netTransmitBytes),
+					ioRead:  int64(bm.ioReadBytes),
+					ioWrite: int64(bm.ioWriteBytes),
+				}
 			}
 		}
-		m.cpuPrevious = lastCPU
+		m.previousMetrics = previous
 		m.cpuPreviousTime = m.cpuCurrentTime
 	}
 	m.cpuCurrentTime = time.Now()
