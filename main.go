@@ -314,8 +314,8 @@ func main() {
 		if v := q.Get("tail"); v != "" {
 			parsed, err := strconv.Atoi(v)
 			if err == nil && parsed > 0 {
-				if parsed > 5000 {
-					parsed = 5000
+				if parsed > 100000 {
+					parsed = 100000
 				}
 				tail = parsed
 			}
@@ -330,6 +330,17 @@ func main() {
 				since = t
 			}
 		}
+
+		// SSE (Server-Sent Events)
+		if q.Get("follow") == "1" {
+			logs.StreamSSE(r.Context(), w, dockerClient, id, logs.ReadLogsOptions{
+				Tail:   tail,
+				Since:  since,
+				Stream: stream,
+			})
+			return
+		}
+
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
 		lines, truncated, err := logs.ReadContainerLogs(ctx, dockerClient, id, logs.ReadLogsOptions{

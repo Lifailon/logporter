@@ -18,6 +18,12 @@
         --gray: #7f8c8d;
         --thead: #1d212b;
         --row-hover: #1b1f29;
+        --panel2: #1b1f29;
+        --line: #2a2f3a;
+        --line2: #39414e;
+        --warn: #fbbf24;
+        --acc-ink: #08111f;
+        --accent: #38bdf8;
       }
       :root[data-theme="light"] {
         --bg: #f4f6f9;
@@ -32,6 +38,12 @@
         --gray: #5b6472;
         --thead: #eceff4;
         --row-hover: #f0f3f8;
+        --panel2: #f0f3f8;
+        --line: #d8dde5;
+        --line2: #c3cad4;
+        --warn: #b06a00;
+        --acc-ink: #ffffff;
+        --accent: #1d6fb8;
       }
       * {
         box-sizing: border-box;
@@ -104,6 +116,44 @@
         border-color: var(--blue);
       }
       select.theme-btn option {
+        background: var(--panel);
+        color: var(--text);
+      }
+      .tgl {
+        font-size: 12px;
+        padding: 6px 12px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        white-space: nowrap;
+        font-weight: 600;
+        font: inherit;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      button.tgl {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+      }
+      .tgl:hover {
+        border-color: var(--accent);
+        background: var(--panel2);
+      }
+      .tgl.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--acc-ink);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
+      }
+      .tgl.on:hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
+      }
+      select.tgl option {
         background: var(--panel);
         color: var(--text);
       }
@@ -361,158 +411,559 @@
         z-index: 40;
         padding: 20px;
       }
+      .modal-mask {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 40;
+        padding: 20px;
+      }
       .modal-mask[hidden] {
         display: none;
       }
-      .modal {
-        width: min(1500px, 96vw);
-        height: min(85vh, 920px);
+
+      /* ---------- logs modal (CrossBoard-style, palette matches the page theme) ---------- */
+      #logsModal {
+        --bg2: #0f1115;
+        --panel: #171a21;
+        --panel2: #1b1f29;
+        --line: #2a2f3a;
+        --line2: #39414e;
+        --dim: #6f7885;
+        --accent: #38bdf8;
+        --sky: #7dd3fc;
+        --ok: #34d399;
+        --warn: #fbbf24;
+        --red: #f87171;
+        --teal: #2dd4bf;
+        --mono:
+          ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Consolas,
+          "Courier New", monospace;
+        --sans:
+          system-ui, -apple-system, "Segoe UI", Roboto, "Inter", sans-serif;
+      }
+      :root[data-theme="light"] #logsModal {
+        --bg2: #f4f6f9;
+        --panel: #ffffff;
+        --panel2: #f0f3f8;
+        --line: #d8dde5;
+        --line2: #c3cad4;
+        --dim: #5b6472;
+        --accent: #1d6fb8;
+        --sky: #3a8ec9;
+        --ok: #1e8e4e;
+        --warn: #b06a00;
+        --red: #c9372c;
+        --teal: #0f9d8f;
+      }
+      :root[data-theme="light"] #logsModal .sw .trk::after {
+        background: #ffffff;
+      }
+      :root[data-theme="light"] #logsModal .sw input:checked + .trk::after {
+        background: #ffffff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+      }
+      :root[data-theme="light"] #logsModal .seg-btn:has(input:checked) {
+        color: #ffffff;
+      }
+      #logsModal .modal {
+        width: min(1350px, 100%);
+        height: 100%;
         position: relative;
         display: flex;
         flex-direction: column;
-        background: var(--panel);
-        border: 1px solid var(--border);
-        border-radius: 12px;
+        background: var(--bg2);
+        border: 1px solid var(--line2);
+        border-radius: 16px;
         overflow: hidden;
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
       }
-      .modal-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 10px 14px;
-        border-bottom: 1px solid var(--border);
-      }
-      .modal-head b {
-        overflow-wrap: anywhere;
-      }
-      .modal-toolbar {
+      #logsModal .modal-head {
         display: flex;
         align-items: center;
         gap: 10px;
         flex-wrap: wrap;
-        padding: 8px 14px;
-        border-bottom: 1px solid var(--border);
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
       }
-      .modal-toolbar label,
-      .follow-toggle {
+      #logsModal .modal-close {
+        flex: 0 0 auto;
+        align-self: center;
+        margin-left: 0;
+        padding: 8px 13px;
+        font-size: 14px;
+        line-height: 1;
+        border-radius: 10px;
+        color: var(--muted);
+        border: 1px solid var(--line);
+        background: var(--panel);
+        font: inherit;
+        cursor: pointer;
+      }
+      #logsModal .modal-close:hover {
+        border-color: var(--red);
+        background: rgba(248, 113, 113, 0.12);
+        color: var(--red);
+      }
+      #logsModal .modal-tools {
+        margin-left: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      #logsModal .mt-row {
         display: flex;
         align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        user-select: none;
-        color: var(--muted);
-        font-size: 13px;
-        white-space: nowrap;
+        gap: 8px;
+        flex-wrap: wrap;
       }
-      .modal-toolbar label:has(input:checked),
-      .follow-toggle:has(input:checked) {
+      #logsModal .mt-row button,
+      #logsModal .mt-row select {
+        flex: 0 0 auto;
+        height: 34px;
+        box-sizing: border-box;
+        padding: 0 12px;
+        font-size: 12px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #logsModal .mt-row button {
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        font: inherit;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      #logsModal .mt-row button:hover:not(.tgl) {
+        border-color: var(--line2);
+        background: var(--panel2);
+      }
+      #logsModal .mt-row select {
+        padding: 0 10px;
+        font-family: var(--sans);
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        outline: none;
+        cursor: pointer;
+      }
+      #logsModal .mt-row select:hover {
+        border-color: var(--line2);
+      }
+      #logsModal .mt-row select:focus {
+        border-color: var(--accent);
+      }
+      #logsModal .mt-row select option {
+        background: var(--bg2);
         color: var(--text);
       }
-      .modal-toolbar input[type="checkbox"],
-      .follow-toggle input[type="checkbox"] {
-        appearance: none;
-        -webkit-appearance: none;
-        margin: 0;
-        width: 32px;
-        height: 18px;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        background: var(--border);
-        position: relative;
+      #logsModal .tgl {
+        font-size: 12px;
+        padding: 6px 12px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+        white-space: nowrap;
+        font-weight: 600;
+        font: inherit;
         cursor: pointer;
-        flex-shrink: 0;
-        transition:
-          background 0.2s,
-          border-color 0.2s;
+        transition: all 0.15s;
       }
-      .modal-toolbar input[type="checkbox"]::before,
-      .follow-toggle input[type="checkbox"]::before {
+      #logsModal .tgl:hover {
+        border-color: var(--accent);
+      }
+      #logsModal .tgl.on {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--acc-ink);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
+      }
+      #logsModal .tgl.on:hover {
+        background: var(--accent);
+        border-color: var(--accent);
+        box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 45%, transparent);
+      }
+      #logsModal .modal-tools input[type="search"] {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--line);
+        background: var(--bg2);
+        color: var(--text);
+        font-size: 13px;
+        outline: none;
+        width: 240px;
+        font-family: var(--sans);
+      }
+      #logsModal .modal-tools input[type="search"]:focus {
+        border-color: var(--accent);
+      }
+      #logsModal .modal-tools input[type="search"].re {
+        border-color: var(--red);
+        color: var(--red);
+      }
+      #logsModal .seg {
+        position: relative;
+        display: flex;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        overflow: hidden;
+        background: var(--bg2);
+        flex: 0 0 auto;
+      }
+      #logsModal .seg-btn {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 58px;
+        padding: 5px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.15s;
+      }
+      #logsModal .seg-btn span {
+        pointer-events: none;
+      }
+      #logsModal .seg-btn input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      #logsModal .seg-btn:has(input:checked) {
+        color: #08111f;
+        font-weight: 700;
+      }
+      #logsModal .seg-thumb {
+        position: absolute;
+        top: 1px;
+        bottom: 1px;
+        left: 0;
+        width: 58px;
+        background: var(--accent);
+        border-radius: 4px;
+        transition: left 0.18s ease;
+      }
+      #modeSeg:has(.seg-btn:nth-child(1) input:checked) .seg-thumb {
+        left: 0;
+        border-radius: 8px 4px 4px 8px;
+      }
+      #modeSeg:has(.seg-btn:nth-child(2) input:checked) .seg-thumb {
+        left: 58px;
+        border-radius: 4px;
+      }
+      #modeSeg:has(.seg-btn:nth-child(3) input:checked) .seg-thumb {
+        left: 116px;
+        border-radius: 4px;
+      }
+      #modeSeg:has(.seg-btn:nth-child(4) input:checked) .seg-thumb {
+        left: 174px;
+        border-radius: 4px 8px 8px 4px;
+      }
+      #logsModal .sw {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 12px;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+      #logsModal .sw input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      #logsModal .sw .trk {
+        position: relative;
+        flex: 0 0 auto;
+        width: 30px;
+        height: 17px;
+        border-radius: 999px;
+        background: var(--line);
+        transition: background 0.15s;
+      }
+      #logsModal .sw .trk::after {
         content: "";
         position: absolute;
         top: 2px;
         left: 2px;
-        width: 12px;
-        height: 12px;
+        width: 13px;
+        height: 13px;
         border-radius: 50%;
-        background: var(--blue);
+        background: #c7d4ea;
         transition:
-          transform 0.2s,
-          background 0.2s;
+          left 0.15s,
+          background 0.15s;
       }
-      .modal-toolbar input[type="checkbox"]:hover,
-      .follow-toggle input[type="checkbox"]:hover {
-        border-color: var(--blue);
+      #logsModal .sw input:checked + .trk {
+        background: var(--accent);
       }
-      .modal-toolbar input[type="checkbox"]:checked,
-      .follow-toggle input[type="checkbox"]:checked {
-        background: var(--blue);
-        border-color: var(--blue);
+      #logsModal .sw input:checked + .trk::after {
+        left: 15px;
+        background: #08111f;
       }
-      .modal-toolbar input[type="checkbox"]:checked::before,
-      .follow-toggle input[type="checkbox"]:checked::before {
-        transform: translateX(16px);
-        background: #8ec8ff;
+      #logsModal .conn {
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        border-radius: 999px;
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        background: var(--bg2);
       }
-      .modal-toolbar .search {
-        flex: 1;
-        min-width: 160px;
-        max-width: 380px;
+      #logsModal .conn.on {
+        color: var(--ok);
+        border-color: rgba(52, 211, 153, 0.35);
+        background: rgba(52, 211, 153, 0.08);
       }
-      .logs {
-        flex: 1;
-        overflow-y: auto;
-        font:
-          12px/1.5 Consolas,
-          "Cascadia Mono",
-          "Courier New",
-          monospace;
-        background: var(--bg);
-        padding: 6px 0 24px;
-      }
-      .log-line {
-        display: flex;
-        gap: 10px;
-        padding: 0 14px;
-        white-space: pre-wrap;
-        word-break: break-all;
-      }
-      .log-line:hover {
-        background: var(--row-hover);
-      }
-      .log-time {
-        color: var(--muted);
-        flex-shrink: 0;
-      }
-      .log-line.stderr .log-text {
+      #logsModal .conn.off {
         color: var(--red);
+        border-color: rgba(248, 113, 113, 0.35);
+        background: rgba(248, 113, 113, 0.08);
       }
-      .log-line[hidden] {
-        display: none;
+      #logsModal .conn.wait {
+        color: var(--warn);
+        border-color: rgba(251, 191, 36, 0.35);
+        background: rgba(251, 191, 36, 0.08);
       }
-      .logs.nowrap {
+      #logsModal .conn.done {
+        color: var(--accent);
+        border-color: rgba(56, 189, 248, 0.35);
+        background: rgba(56, 189, 248, 0.08);
+      }
+      #logsModal .count {
+        font-size: 12px;
+        color: var(--text);
+        font-family: var(--mono);
+        white-space: nowrap;
+        border-radius: 999px;
+        padding: 5px 12px;
+        border: 1px solid var(--line);
+        background: var(--bg2);
+      }
+      #logsModal .log-body {
+        flex: 1;
+        position: relative;
+        overflow-y: auto;
+        padding: 8px 0;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.5;
+        background: var(--bg2);
+        --ctxw: 9ch;
+        --podw: 16ch;
+      }
+      #logsModal .log-body.no-wrap {
         overflow-x: auto;
       }
-      .logs.nowrap .log-line {
-        white-space: pre;
-        word-break: normal;
+      #logsModal .log-body.no-wrap .logline {
         min-width: max-content;
       }
-      .logs.nowrap .log-time {
-        flex-shrink: 0;
+      #logsModal .log-body.no-wrap .lb-msg {
+        white-space: pre;
+        word-break: normal;
       }
-      .modal-status {
+      #logsModal .log-body.no-ts .lb-time {
+        display: none;
+      }
+      #logsModal .log-body.no-stream .lb-stream {
+        display: none;
+      }
+      #logsModal .log-body .vspacer {
+        position: relative;
+        width: 100%;
+        pointer-events: none;
+      }
+      #logsModal .logline {
+        position: absolute;
+        left: 0;
+        right: 0;
+        box-sizing: border-box;
+        display: flex;
+        gap: 10px;
+        padding: 1px 14px;
+        margin: 0;
+        border-bottom: 1px solid rgba(34, 48, 79, 0.18);
+        user-select: text;
+        -webkit-user-select: text;
+      }
+      #logsModal .logline:hover {
+        background: rgba(56, 189, 248, 0.05);
+      }
+      #logsModal .logline.hide {
+        display: none;
+      }
+      #logsModal .logline.ctx {
+        background: rgba(56, 189, 248, 0.045);
+        opacity: 0.8;
+      }
+      #logsModal .logline.tl-mark {
+        outline: 1px solid var(--accent);
+        outline-offset: -1px;
+        background: rgba(56, 189, 248, 0.12);
+      }
+      #logsModal .lb-stream {
+        flex: 0 0 auto;
+        width: max-content;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        opacity: 0.85;
+      }
+      #logsModal .lb-stream.stream-out {
+        color: var(--ok);
+      }
+      #logsModal .lb-stream.stream-err {
+        color: var(--red);
+      }
+      #logsModal .lb-time {
+        flex: 0 0 auto;
+        width: max-content;
+        color: var(--dim);
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+      #logsModal .lb-msg {
+        flex: 1 1 auto;
+        color: var(--text);
+        white-space: pre-wrap;
+        word-break: break-all;
+        min-width: 0;
+      }
+      #logsModal .lb-msg mark {
+        background: #ffd000;
+        color: #1f2430;
+        border-radius: 2px;
+      }
+      #logsModal .vp-char {
+        font-style: normal;
+      }
+      /* ---------- таймлайн по timestamp ---------- */
+      #logsModal .tl {
+        position: relative;
+        height: 56px;
+        padding: 10px 14px 0;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+        cursor: pointer;
+        user-select: none;
+        --tl0: 0;
+        --tl1: 1;
+      }
+      #logsModal .tl-bins {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        top: 8px;
+        bottom: 18px;
+        display: flex;
+        align-items: flex-end;
+        gap: 1px;
+      }
+      #logsModal .tl-bins .bin {
+        flex: 1 1 0;
+        min-width: 0;
+        height: 0;
+        border-radius: 1px 1px 0 0;
+        background: linear-gradient(
+          180deg,
+          var(--sky) 0%,
+          rgba(56, 189, 248, 0.35) 55%,
+          rgba(56, 189, 248, 0.12) 100%
+        );
+      }
+      #logsModal .tl-bins .bin.err {
+        background: linear-gradient(
+          180deg,
+          #f87171 0%,
+          rgba(248, 113, 113, 0.45) 55%,
+          rgba(248, 113, 113, 0.14) 100%
+        );
+      }
+      #logsModal .tl-axisbar {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 7px;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--line2);
+      }
+      #logsModal .tl-label {
+        position: absolute;
+        bottom: 1px;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--muted);
+        line-height: 1;
+        white-space: nowrap;
+      }
+      #logsModal .tl-label.lt-start {
+        left: 14px;
+      }
+      #logsModal .tl-label.lt-end {
+        right: 14px;
+      }
+      #logsModal .tl-tip {
+        position: absolute;
+        top: 2px;
+        transform: translateX(-50%);
+        font-family: var(--mono);
+        font-size: 9.5px;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--line2);
+        border-radius: 6px;
+        padding: 1px 6px;
+        pointer-events: none;
+        white-space: nowrap;
+        z-index: 2;
+      }
+      #logsModal .modal-foot {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 10px;
         padding: 6px 14px;
-        border-top: 1px solid var(--border);
+        border-top: 1px solid var(--line);
+        background: var(--panel);
         color: var(--muted);
-        font-size: 12px;
+        font-size: 11px;
       }
-      .modal-status .warn {
-        color: var(--orange);
+      #logsModal .modal-foot .foot-title {
+        color: var(--text);
+        font-family: var(--mono);
+        font-size: 12px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+      #logsModal .modal-foot .warn {
+        color: var(--warn);
+        font-weight: 600;
+        flex: 0 0 auto;
       }
       table tbody tr[data-id] {
         cursor: pointer;
@@ -606,11 +1057,15 @@
     <header>
       <h1>logPorter Dashboard</h1>
       <span class="spacer"></span>
-      <label id="pauseLabel" class="follow-toggle" title="Pause auto-refresh">
-        <input type="checkbox" id="pauseBtn" />
+      <button
+        id="pauseBtn"
+        class="tgl on"
+        type="button"
+        title="Pause auto-refresh"
+      >
         Live
-      </label>
-      <select id="refreshSel" class="theme-btn" title="Auto-refresh interval">
+      </button>
+      <select id="refreshSel" class="tgl" title="Auto-refresh interval">
         <option value="5">5s</option>
         <option value="10">10s</option>
         <option value="15">15s</option>
@@ -756,61 +1211,139 @@
     <div id="logsModal" class="modal-mask" hidden>
       <div class="modal">
         <div class="modal-head">
-          <b id="logsTitle"></b>
-          <span class="spacer"></span>
-          <button id="logsClose" class="theme-btn" type="button" title="Close">
-            ✕
+          <div class="modal-tools">
+            <div class="mt-row" id="toolsFilters">
+              <input
+                id="logFilter"
+                type="search"
+                placeholder="Filter log content..."
+                autocomplete="off"
+              />
+              <div class="seg" id="modeSeg">
+                <label class="seg-btn"
+                  ><input
+                    type="radio"
+                    name="logMode"
+                    value="text"
+                    checked
+                  /><span>Plain</span></label
+                >
+                <label class="seg-btn"
+                  ><input type="radio" name="logMode" value="and" /><span
+                    >AND</span
+                  ></label
+                >
+                <label class="seg-btn"
+                  ><input type="radio" name="logMode" value="or" /><span
+                    >OR</span
+                  ></label
+                >
+                <label class="seg-btn"
+                  ><input type="radio" name="logMode" value="regex" /><span
+                    >Regex</span
+                  ></label
+                >
+                <span class="seg-thumb"></span>
+              </div>
+              <label class="sw"
+                ><input type="checkbox" id="insensChk" checked /><span
+                  class="trk"
+                ></span
+                >Ignore-case</label
+              >
+              <label class="sw"
+                ><input type="checkbox" id="ctxChk" /><span class="trk"></span
+                >Context</label
+              >
+              <label class="sw" title="Show stdout"
+                ><input type="checkbox" id="outChk" checked /><span
+                  class="trk"
+                ></span
+                >Stdout</label
+              >
+              <label class="sw" title="Show stderr"
+                ><input type="checkbox" id="errChk" checked /><span
+                  class="trk"
+                ></span
+                >Stderr</label
+              >
+              <label
+                class="sw"
+                title="Show the stream (stdout/stderr) as a column"
+                ><input type="checkbox" id="streamChk" checked /><span
+                  class="trk"
+                ></span
+                >Stream-show</label
+              >
+              <label class="sw"
+                ><input type="checkbox" id="tsChk" checked /><span
+                  class="trk"
+                ></span
+                >Timestamp</label
+              >
+              <label class="sw"
+                ><input type="checkbox" id="wrapChk" checked /><span
+                  class="trk"
+                ></span
+                >Word-wrap</label
+              >
+            </div>
+            <div class="mt-row" id="toolsModes">
+              <button id="followChk" class="tgl on">Follow</button>
+              <button id="btnPause" class="tgl">Pause</button>
+              <button id="autoScroll" class="tgl on">Scroll</button>
+              <button id="btnClearLogs">Clear</button>
+              <button id="btnDownload">Download</button>
+              <select
+                id="sinceSel"
+                class="sel"
+                title="Show logs only from the last N hours"
+              >
+                <option value="">Age: all</option>
+                <option value="1h">1h</option>
+                <option value="3h">3h</option>
+                <option value="6h">6h</option>
+                <option value="12h">12h</option>
+                <option value="24h">24h</option>
+                <option value="48h">48h</option>
+                <option value="72h">72h</option>
+                <option value="168h">168h</option>
+              </select>
+              <select
+                id="linesSel"
+                class="sel"
+                title="How many history lines to load"
+              >
+                <option value="0">History: no</option>
+                <option value="100">100</option>
+                <option value="200" selected>200</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
+                <option value="2000">2000</option>
+                <option value="3000">3000</option>
+                <option value="5000">5000</option>
+                <option value="10000">10000</option>
+                <option value="20000">20000</option>
+                <option value="30000">30000</option>
+                <option value="50000">50000</option>
+                <option value="100000">100000</option>
+              </select>
+              <span class="conn wait" id="connState">-</span>
+              <span class="count" id="lineCount">0</span>
+            </div>
+          </div>
+          <button id="logsClose" class="modal-close" type="button">
+            &#10005;
           </button>
         </div>
-        <div class="modal-toolbar">
-          <input
-            class="search"
-            id="logsFilter"
-            type="search"
-            placeholder="Filter messages..."
-            autocomplete="off"
-            title="Filter loaded log lines by content"
-          />
-          <label
-            title="Match all space-separated words as substrings, anywhere in the line"
-            ><input type="checkbox" id="logsAnd" /> AND</label
-          >
-          <label
-            title="Match any space-separated word as substring, anywhere in the line"
-            ><input type="checkbox" id="logsOr" /> OR</label
-          >
-          <label title="Match a case-insensitive regular expression"
-            ><input type="checkbox" id="logsRegex" /> Regex</label
-          >
-          <label title="Show one line before and after each match"
-            ><input type="checkbox" id="logsContext" /> Context</label
-          >
-          <select id="logsTail" class="theme-btn" title="Number of lines">
-            <option value="100">100 lines</option>
-            <option value="200" selected>200 lines</option>
-            <option value="500">500 lines</option>
-            <option value="1000">1000 lines</option>
-            <option value="5000">5000 lines</option>
-          </select>
-          <label
-            title="Auto-update and follow new log lines when at the bottom"
-          >
-            <input type="checkbox" id="logsFollow" /> Follow
-          </label>
-          <label title="Show stdout"
-            ><input type="checkbox" id="logsStdout" checked /> Stdout</label
-          >
-          <label title="Show stderr"
-            ><input type="checkbox" id="logsStderr" checked /> Stderr</label
-          >
-          <label title="Show timestamps"
-            ><input type="checkbox" id="logsTime" checked /> Timestamps</label
-          >
-          <label title="Wrap long lines"
-            ><input type="checkbox" id="logsWrap" checked /> Wordwrap</label
-          >
+        <div class="tl" id="logTimeline">
+          <div class="tl-bins" id="tlBins"></div>
+          <div class="tl-axisbar"></div>
+          <span class="tl-label lt-start" id="tlStart"></span>
+          <span class="tl-label lt-end" id="tlEnd"></span>
+          <span class="tl-tip hidden" id="tlTip"></span>
         </div>
-        <div id="logsOutput" class="logs"></div>
+        <div id="logBody" class="log-body"></div>
         <button
           id="logsJump"
           class="jump-bottom"
@@ -819,8 +1352,8 @@
         >
           &darr;
         </button>
-        <div class="modal-status">
-          <span id="logsCount"></span>
+        <div class="modal-foot">
+          <span id="logsTitle" class="foot-title"></span>
           <span id="logsTrunc" class="warn"></span>
         </div>
       </div>
@@ -1177,7 +1710,6 @@
         var pausedKey = "docker-exporter-paused";
         var sel = document.getElementById("refreshSel");
         var btn = document.getElementById("pauseBtn");
-        var label = document.getElementById("pauseLabel");
         var refreshBtn = document.getElementById("refreshBtn");
         var timer = null;
         var saved = localStorage.getItem(key);
@@ -1211,8 +1743,8 @@
         }
         function sync() {
           var p = paused();
-          btn.checked = !p;
-          label.title = p ? "Resume auto-refresh" : "Pause auto-refresh";
+          btn.classList.toggle("on", !p);
+          btn.title = p ? "Resume auto-refresh" : "Pause auto-refresh";
           if (timer) {
             clearInterval(timer);
             timer = null;
@@ -1274,232 +1806,212 @@
         var $ = function (id) {
           return document.getElementById(id);
         };
-        var out = $("logsOutput"),
+        var logBody = $("logBody"),
           mask = $("logsModal"),
           title = $("logsTitle"),
-          countEl = $("logsCount"),
           truncEl = $("logsTrunc"),
-          selTime = $("logsTime"),
-          selOut = $("logsStdout"),
-          selErr = $("logsStderr"),
-          selFollow = $("logsFollow"),
-          selWrap = $("logsWrap"),
-          selContext = $("logsContext"),
-          selAnd = $("logsAnd"),
-          selOr = $("logsOr"),
-          selRegex = $("logsRegex"),
-          filter = $("logsFilter"),
+          filter = $("logFilter"),
+          insens = $("insensChk"),
+          ctxChk = $("ctxChk"),
+          wrapChk = $("wrapChk"),
+          tsChk = $("tsChk"),
+          streamChk = $("streamChk"),
+          outChk = $("outChk"),
+          errChk = $("errChk"),
+          followChk = $("followChk"),
+          btnPause = $("btnPause"),
+          autoScroll = $("autoScroll"),
+          btnClearLogs = $("btnClearLogs"),
+          btnDownload = $("btnDownload"),
+          sinceSel = $("sinceSel"),
+          linesSel = $("linesSel"),
+          connState = $("connState"),
+          lineCountEl = $("lineCount"),
           jump = $("logsJump");
         var cur = null,
-          polling = false,
-          timer = null,
-          lastTs = 0;
+          paused = false;
+        var ES = null,
+          pollTimer = null,
+          restartTimer = null;
+        var ssemode = typeof EventSource !== "undefined";
+        // Метка последней принятой строки: точка возобновления после Pause/Resume,
+        // чтобы сервер вернул только новые строки (без дублей истории).
+        var lastKey = null,
+          lastTs = "";
+        var settling = false,
+          stickBottom = false;
 
+        var logs = [];
+        var csum = [0];
+        var totalLines = 0,
+          shownLines = 0;
+        var markIndex = -1,
+          markTimer = null;
+
+        /* ---------- виртуализация строк лога (окно + замер высот) ---------- */
+        var vpEls = {},
+          topSp = null,
+          botSp = null;
+        var vpProbe = null,
+          vpChars = null,
+          vpLead = null,
+          vpWrapped = true,
+          vpTick = false;
+
+        var tlBar = $("logTimeline"),
+          tlBins = $("tlBins"),
+          tlStart = $("tlStart"),
+          tlEnd = $("tlEnd"),
+          tlTip = $("tlTip");
+        var tlTimes = [],
+          tlErrs = [],
+          tlMin = null,
+          tlMax = null,
+          tlLines = 0;
+        var tlCounts = null,
+          tlErrPrev = null,
+          tlBinEls = null,
+          tlDirty = false,
+          tlLastRender = 0;
+        var NBINS = 160,
+          TL_INTERVAL = 350;
+
+        function raf(fn) {
+          if (window.requestAnimationFrame) window.requestAnimationFrame(fn);
+          else setTimeout(fn, 32);
+        }
+
+        function escRe(s) {
+          return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }
+        function iso(ms) {
+          return new Date(ms).toISOString();
+        }
+        function followOn() {
+          return followChk.classList.contains("on");
+        }
+        function autoScrollOn() {
+          return autoScroll.classList.contains("on");
+        }
         function stream() {
-          var s = selOut.checked,
-            e = selErr.checked;
+          var s = outChk.checked,
+            e = errChk.checked;
           return s && e ? "all" : s ? "stdout" : e ? "stderr" : "none";
         }
-        function nearBottom() {
-          return out.scrollHeight - out.scrollTop - out.clientHeight < 40;
+        function setConn(html, cls) {
+          connState.textContent = html;
+          connState.className = "conn " + (cls || "wait");
         }
-        function doScroll() {
-          out.scrollTop = out.scrollHeight;
-          requestAnimationFrame(function () {
-            out.scrollTop = out.scrollHeight;
-          });
+        function ageSinceMs() {
+          var v = sinceSel.value;
+          if (!v) return 0;
+          return Date.now() - parseFloat(v) * 3600000;
         }
-        function sync() {
-          var nb = nearBottom();
-          selFollow.checked = nb;
-          jump.classList.toggle("show", !nb);
-          if (nb && !polling) start();
-          else if (!nb && polling) stop();
+        function tailValue() {
+          var v = parseInt(linesSel.value, 10) || 0;
+          if (v > 0) return v;
+          // «История: выкл»: при выбранном окне Age всё равно грузим окно целиком.
+          return ageSinceMs() ? 100000 : 0;
         }
-        function start() {
-          polling = true;
-          clearInterval(timer);
-          timer = setInterval(load, 5000);
-        }
-        function stop() {
-          polling = false;
-          clearInterval(timer);
-          timer = null;
-        }
-        function mark(text, terms, re) {
-          var line = text.textContent;
-          text.textContent = "";
-          var ranges = [];
-          if (re) {
-            var g = new RegExp(re.source, "gi");
-            var m;
-            while ((m = g.exec(line)) !== null) {
-              if (m[0].length === 0) {
-                g.lastIndex++;
-                continue;
-              }
-              ranges.push([m.index, m.index + m[0].length]);
-            }
-          } else if (terms && terms.length) {
-            var low = line.toLowerCase();
-            terms.forEach(function (t) {
-              var pos = 0,
-                i;
-              while ((i = low.indexOf(t, pos)) !== -1) {
-                ranges.push([i, i + t.length]);
-                pos = i + t.length;
-              }
-            });
+
+        /* ---------- данные ---------- */
+        function addLine(d) {
+          var key =
+            (d.ts || "") +
+            "|" +
+            (d.stream || "") +
+            "|" +
+            (d.line || d.error || "");
+          if (key === lastKey) return;
+          lastKey = key;
+          var isErr = d.stream === "stderr";
+          var tsMs = Date.parse(d.ts || "");
+          if (!isNaN(tsMs)) {
+            lastTs = d.ts;
+            tlAdd(tsMs, isErr);
           }
-          if (!ranges.length) {
-            text.appendChild(document.createTextNode(line));
+          var msg = (d.line || d.error || "").replace(/\r?\n$/, "");
+          var ok = lineMatches(msg, filter.value, logMode(), insens.checked);
+          var it = {
+            ts: d.ts || "",
+            tsMs: isNaN(tsMs) ? -1 : tsMs,
+            stream: isErr ? "stderr" : "stdout",
+            msg: msg,
+            isErr: isErr,
+            match: ok ? 1 : 0,
+            shown: ok,
+            ctxN: false,
+            h: 0,
+            est: 0,
+          };
+          var pl = logs[logs.length - 1];
+          if (!ok && ctxChk.checked && pl && pl.match) {
+            it.shown = true;
+            it.ctxN = true;
+          }
+          var flipped = false;
+          if (ctxChk.checked && ok && pl && !pl.match && !pl.shown) {
+            pl.shown = true;
+            pl.ctxN = true;
+            shownLines++;
+            flipped = true;
+          }
+          if (it.shown) shownLines++;
+          it.est = vpEstimate(it);
+          logs.push(it);
+          totalLines++;
+          var m0 = logs.length;
+          if (flipped) {
+            var hp = vpSlotH(pl);
+            csum[m0 - 1] = (m0 >= 2 ? csum[m0 - 2] : 0) + hp;
+          }
+          csum[m0] = csum[m0 - 1] + (it.shown ? vpSlotH(it) : 0);
+          lineCountEl.textContent = shownLines + " / " + totalLines;
+          followScrollBatch();
+          vpNeed();
+        }
+
+        function reset() {
+          lastKey = null;
+          lastTs = "";
+          logs = [];
+          csum = [0];
+          markIndex = -1;
+          if (markTimer) {
+            clearTimeout(markTimer);
+            markTimer = null;
+          }
+          totalLines = 0;
+          shownLines = 0;
+          vpClearRows();
+          lineCountEl.textContent = "0";
+          truncEl.textContent = "";
+          tlReset();
+          vpRefluid();
+        }
+
+        function clearLog() {
+          closeStream();
+          reset();
+          setConn("-", "wait");
+        }
+
+        /* ---------- поток: снимок истории + SSE/fallback ---------- */
+        function loadHistory() {
+          if (!cur || stream() === "none") {
+            startStream();
             return;
           }
-          ranges.sort(function (a, b) {
-            return a[0] - b[0];
-          });
-          var merged = [];
-          ranges.forEach(function (r) {
-            var last = merged[merged.length - 1];
-            if (last && r[0] <= last[1]) {
-              if (r[1] > last[1]) last[1] = r[1];
-            } else {
-              merged.push([r[0], r[1]]);
-            }
-          });
-          var pos = 0;
-          merged.forEach(function (r) {
-            if (r[0] > pos)
-              text.appendChild(document.createTextNode(line.slice(pos, r[0])));
-            var m = document.createElement("mark");
-            m.textContent = line.slice(r[0], r[1]);
-            text.appendChild(m);
-            pos = r[1];
-          });
-          if (pos < line.length) {
-            text.appendChild(document.createTextNode(line.slice(pos)));
+          var t = tailValue();
+          if (t <= 0) {
+            // «История: выкл», без окна Age: начинаем сразу с живого потока.
+            startStream();
+            return;
           }
-        }
-        function filterLines() {
-          var raw = filter.value;
-          var filterAndMode = selAnd.checked;
-          var filterOrMode = selOr.checked;
-          var filterRegexMode =
-            selRegex.checked && !selAnd.checked && !selOr.checked;
-          var re = null;
-          var invalid = false;
-          if (filterRegexMode && raw) {
-            try {
-              re = new RegExp(raw, "i");
-            } catch (e) {
-              invalid = true;
-            }
-          }
-          filter.classList.toggle("invalid", invalid);
-          var terms =
-            filterAndMode || filterOrMode
-              ? raw
-                  .split(/\s+/)
-                  .filter(Boolean)
-                  .map(function (t) {
-                    return t.toLowerCase();
-                  })
-              : [raw.toLowerCase()];
-          var hasFilter = raw.trim() !== "" && !invalid;
-          var rows = out.querySelectorAll(".log-line");
-          var allowed = new Array(rows.length);
-          var matched = new Array(rows.length);
-          var i, row;
-          for (i = 0; i < rows.length; i++) {
-            row = rows[i];
-            var err = row.classList.contains("stderr");
-            var body = row.querySelector(".log-text").textContent;
-            allowed[i] = err ? selErr.checked : selOut.checked;
-            matched[i] = false;
-            if (!allowed[i] || !raw.trim() || invalid) continue;
-            var match;
-            if (filterRegexMode) {
-              re.lastIndex = 0;
-              match = re.test(body);
-            } else if (filterOrMode || filterAndMode) {
-              var lower = body.toLowerCase();
-              var any = terms.some(function (t) {
-                return lower.indexOf(t) !== -1;
-              });
-              match = filterOrMode
-                ? any
-                : terms.every(function (t) {
-                    return lower.indexOf(t) !== -1;
-                  });
-            } else {
-              match = body.toLowerCase().indexOf(raw.toLowerCase()) !== -1;
-            }
-            matched[i] = match;
-          }
-          var ctx = selContext.checked && hasFilter;
-          for (i = 0; i < rows.length; i++) {
-            var text = rows[i].querySelector(".log-text");
-            var show;
-            if (!allowed[i]) {
-              show = false;
-            } else if (!raw.trim()) {
-              show = true;
-            } else if (invalid) {
-              show = false;
-            } else {
-              show = matched[i] || (ctx && (matched[i - 1] || matched[i + 1]));
-            }
-            rows[i].hidden = !show;
-            if (matched[i]) {
-              mark(text, terms, filterRegexMode ? re : null);
-            } else if (show) {
-              text.textContent = text.textContent;
-            }
-          }
-          updateCount();
-        }
-        function updateCount() {
-          var total = out.querySelectorAll(".log-line").length;
-          var vis = out.querySelectorAll(".log-line:not([hidden])").length;
-          countEl.textContent =
-            vis < total ? vis + " / " + total + " lines" : total + " lines";
-        }
-        function append(data) {
-          var frag = document.createDocumentFragment();
-          data.forEach(function (l) {
-            var ts = Date.parse(l.ts);
-            if (polling && lastTs && ts <= lastTs) return;
-            var row = document.createElement("div");
-            row.className =
-              "log-line " + (l.stream === "stderr" ? "stderr" : "stdout");
-            var line = l.line.replace(/\r?\n$/, "");
-            row.title = line;
-            var time = document.createElement("span");
-            time.className = "log-time";
-            time.textContent = new Date(ts)
-              .toISOString()
-              .replace("T", " ")
-              .replace("Z", "");
-            time.hidden = !selTime.checked;
-            row.appendChild(time);
-            var text = document.createElement("span");
-            text.className = "log-text";
-            text.textContent = line;
-            row.appendChild(text);
-            frag.appendChild(row);
-            if (ts > lastTs) lastTs = ts;
-          });
-          out.appendChild(frag);
-          updateCount();
-        }
-        function load() {
-          if (!cur || stream() === "none") return;
           var p = new URLSearchParams();
-          p.set("tail", $("logsTail").value);
+          p.set("tail", String(t));
+          if (ageSinceMs()) p.set("since", iso(ageSinceMs()));
           p.set("stream", stream());
-          if (polling && lastTs) {
-            p.set("since", new Date(lastTs + 1).toISOString());
-          }
           fetch(
             "/api/containers/" + encodeURIComponent(cur.id) + "/logs?" + p,
             { cache: "no-store" },
@@ -1508,87 +2020,781 @@
               return r.status === 400 || r.status === 404 ? null : r.json();
             })
             .then(function (d) {
-              if (!d) return close();
+              if (!d) {
+                close();
+                return;
+              }
               truncEl.textContent = d.truncated
                 ? "output truncated by size limit"
                 : "";
-              append(d.logs);
-              if (filter.value) filterLines();
-              doScroll();
-              sync();
+              var arr = d.logs || [];
+              for (var i = 0; i < arr.length; i++) addLine(arr[i]);
+              if (logBody.scrollTop) logBody.scrollTop = 0;
+              startStream();
             })
-            .catch(function () {});
+            .catch(function () {
+              startStream();
+            });
         }
-        function reset() {
-          lastTs = 0;
-          out.textContent = "";
-          countEl.textContent = "";
-          truncEl.textContent = "";
+
+        function streamURL(sinceVal) {
+          return (
+            "/api/containers/" +
+            encodeURIComponent(cur.id) +
+            "/logs?follow=1&stream=" +
+            encodeURIComponent(stream()) +
+            "&since=" +
+            encodeURIComponent(sinceVal)
+          );
         }
-        function reload() {
-          stop();
-          reset();
-          load();
+
+        function startStream() {
+          if (!cur || mask.hidden) {
+            closeStream();
+            return;
+          }
+          closeStream();
+          if (restartTimer) {
+            clearTimeout(restartTimer);
+            restartTimer = null;
+          }
+          if (paused) {
+            setConn("Paused", "wait");
+            return;
+          }
+          if (!followOn()) {
+            setConn(totalLines ? "History loaded" : "Stopped", "done");
+            return;
+          }
+          if (stream() === "none") {
+            setConn("No stream selected", "off");
+            return;
+          }
+          setConn("Connecting...", "wait");
+          var sinceVal = lastTs || iso(Date.now());
+          if (ssemode) {
+            try {
+              ES = new EventSource(streamURL(sinceVal));
+              ES.onopen = function () {
+                setConn("Connected", "on");
+              };
+              ES.onmessage = function (e) {
+                var d;
+                try {
+                  d = JSON.parse(e.data);
+                } catch (_) {
+                  return;
+                }
+                if (d) addLine(d);
+              };
+              ES.onerror = function () {
+                if (ES && ES.readyState === EventSource.CLOSED)
+                  setConn("Closed", "off");
+                else setConn("Network error, reconnecting...", "off");
+              };
+              return;
+            } catch (_) {
+              ssemode = false;
+            }
+          }
+          // Fallback: опрос раз в секунду с позиции lastTs.
+          setConn("Polling", "on");
+          pollTick();
+          pollTimer = setInterval(pollTick, 1000);
         }
+
+        function pollTick() {
+          if (!cur) return;
+          var sinceVal = lastTs || iso(Date.now());
+          var p =
+            "tail=100000&stream=" +
+            encodeURIComponent(stream()) +
+            "&since=" +
+            encodeURIComponent(sinceVal);
+          fetch(
+            "/api/containers/" + encodeURIComponent(cur.id) + "/logs?" + p,
+            {
+              cache: "no-store",
+            },
+          )
+            .then(function (r) {
+              return r.status === 400 || r.status === 404 ? null : r.json();
+            })
+            .then(function (d) {
+              if (!d) return;
+              if (d.truncated)
+                truncEl.textContent = "output truncated by size limit";
+              var arr = d.logs || [];
+              for (var i = 0; i < arr.length; i++) addLine(arr[i]);
+            })
+            .catch(function () {
+              setConn("Poll error", "off");
+            });
+        }
+
+        function closeStream() {
+          if (ES) {
+            ES.close();
+            ES = null;
+          }
+          if (pollTimer) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+          }
+        }
+
+        function restartIfStreaming() {
+          if (!paused && !mask.hidden) {
+            clearLog();
+            loadHistory();
+          }
+        }
+
+        /* ---------- режимы фильтрации логов ---------- */
+        function logMode() {
+          var r = document.querySelector('input[name="logMode"]:checked');
+          return r ? r.value : "text";
+        }
+        function parseTerms(q, mode) {
+          if (mode === "regex" || mode === "text") {
+            var s = q ? q.trim() : "";
+            return s ? [s] : [];
+          }
+          return q.trim().split(/\s+/).filter(Boolean);
+        }
+        function isValidRegex(q) {
+          try {
+            new RegExp(q);
+            return true;
+          } catch (_) {
+            return false;
+          }
+        }
+        function lineMatches(raw, q, mode, ins) {
+          if (!q) return true;
+          var terms = parseTerms(q, mode);
+          if (!terms.length) return true;
+          var hay = ins ? raw.toLowerCase() : raw;
+          if (mode === "regex") {
+            try {
+              return new RegExp(terms[0], ins ? "i" : "").test(raw);
+            } catch (_) {
+              return hay.indexOf(terms[0].toLowerCase()) !== -1;
+            }
+          }
+          var test = function (t) {
+            var w = ins ? t.toLowerCase() : t;
+            return hay.indexOf(w) !== -1;
+          };
+          if (mode === "text") return test(terms[0]);
+          if (mode === "or") return terms.some(test);
+          return terms.every(test);
+        }
+        function highlightRe() {
+          var q = filter.value,
+            ins = insens.checked;
+          if (!q) return null;
+          var mode = logMode();
+          var terms = parseTerms(q, mode);
+          if (!terms.length) return null;
+          var flags = "g" + (ins ? "i" : "");
+          if (mode === "regex") {
+            try {
+              return new RegExp(terms[0], flags);
+            } catch (_) {
+              return new RegExp(escRe(terms[0]), flags);
+            }
+          }
+          if (mode === "text") return new RegExp(escRe(terms[0]), flags);
+          return new RegExp(terms.map(escRe).join("|"), flags);
+        }
+        function highlightFrag(text, re) {
+          var f = document.createDocumentFragment();
+          if (!re) {
+            f.appendChild(document.createTextNode(text));
+            return f;
+          }
+          var last = 0,
+            m;
+          while ((m = re.exec(text)) !== null) {
+            if (m.index > last)
+              f.appendChild(document.createTextNode(text.slice(last, m.index)));
+            var mark = document.createElement("mark");
+            mark.textContent = m[0];
+            f.appendChild(mark);
+            last = m.index + m[0].length;
+          }
+          if (last < text.length)
+            f.appendChild(document.createTextNode(text.slice(last)));
+          re.lastIndex = 0;
+          return f;
+        }
+        function renderMsg(el, raw) {
+          el.textContent = "";
+          el.appendChild(highlightFrag(raw, highlightRe()));
+        }
+
+        function applyLogFilter() {
+          var q = filter.value,
+            mode = logMode(),
+            ins = insens.checked,
+            ctx = ctxChk.checked;
+          var i,
+            n = logs.length,
+            match = new Array(n);
+          for (i = 0; i < n; i++) {
+            match[i] = lineMatches(logs[i].msg, q, mode, ins) ? 1 : 0;
+          }
+          shownLines = 0;
+          for (i = 0; i < n; i++) {
+            var ok =
+              !!match[i] ||
+              (ctx && ((i > 0 && match[i - 1]) || (i < n - 1 && match[i + 1])));
+            logs[i].match = match[i] ? 1 : 0;
+            logs[i].shown = ok;
+            logs[i].ctxN = ok && !match[i];
+            if (ok) shownLines++;
+          }
+          lineCountEl.textContent = shownLines + " / " + totalLines;
+          filter.classList.toggle(
+            "re",
+            mode === "regex" && q !== "" && !isValidRegex(q),
+          );
+          rebuildCsum();
+          vpClearRows();
+          vpNeed();
+        }
+
+        /* ---------- виртуализация ---------- */
+        function vpSpacers() {
+          if (topSp || !logBody) return;
+          topSp = document.createElement("div");
+          topSp.className = "vspacer";
+          botSp = document.createElement("div");
+          botSp.className = "vspacer";
+          logBody.appendChild(topSp);
+          logBody.appendChild(botSp);
+        }
+        function vpDefaultH() {
+          return vpLead || 21;
+        }
+        function vpEstimate(it) {
+          if (!vpWrapped) return vpDefaultH();
+          if (vpChars == null || !it.msg) return vpDefaultH();
+          return Math.max(1, Math.ceil(it.msg.length / vpChars)) * vpDefaultH();
+        }
+        function vpSlotH(it) {
+          return it.h > 0 ? it.h : it.est || vpDefaultH();
+        }
+        function rebuildCsum() {
+          var n = logs.length,
+            acc = 0,
+            i,
+            ns = new Array(n + 1);
+          ns[0] = 0;
+          for (i = 0; i < n; i++) {
+            acc += logs[i].shown ? vpSlotH(logs[i]) : 0;
+            ns[i + 1] = acc;
+          }
+          csum = ns;
+        }
+        function vpFirstAbove(y) {
+          var lo = 0,
+            hi = logs.length;
+          while (lo < hi) {
+            var mid = (lo + hi) >> 1;
+            if (csum[mid + 1] > y) hi = mid;
+            else lo = mid + 1;
+          }
+          return lo;
+        }
+        function vpClearRows() {
+          var k;
+          for (k in vpEls) {
+            try {
+              vpEls[k].el.remove();
+            } catch (_) {}
+          }
+          vpEls = {};
+        }
+        function fmtTs(ts) {
+          var ms = Date.parse(ts);
+          if (isNaN(ms)) return "";
+          return new Date(ms).toISOString().replace("T", " ").replace("Z", "");
+        }
+        function vpRow(i) {
+          var it = logs[i];
+          var el = document.createElement("div");
+          el.setAttribute("data-vix", String(i));
+          var cls = "logline";
+          if (it.ctxN) cls += " ctx";
+          el.className = cls;
+          var s = document.createElement("span");
+          s.className = "lb-stream " + (it.isErr ? "stream-err" : "stream-out");
+          s.textContent = it.stream;
+          var t = document.createElement("span");
+          t.className = "lb-time";
+          t.textContent = fmtTs(it.ts);
+          var m = document.createElement("span");
+          m.className = "lb-msg";
+          renderMsg(m, it.msg);
+          el.appendChild(s);
+          el.appendChild(t);
+          el.appendChild(m);
+          return el;
+        }
+        function vpRender() {
+          vpTick = false;
+          if (!logBody) return;
+          if (logs.length === 0) {
+            vpClearRows();
+            if (topSp) {
+              topSp.style.height = "0px";
+              botSp.style.height = "0px";
+            }
+            return;
+          }
+          vpSpacers();
+          var st = logBody.scrollTop || 0;
+          var vh = logBody.clientHeight || 300;
+          var over = 120;
+          var lo = vpFirstAbove(st - over);
+          var hi = vpFirstAbove(st + vh + over);
+          var n = logs.length,
+            i,
+            k;
+          for (k in vpEls) {
+            var ki = +k;
+            if (ki < lo || ki >= hi || !logs[ki] || !logs[ki].shown) {
+              try {
+                vpEls[ki].el.remove();
+              } catch (_) {}
+              delete vpEls[k];
+            }
+          }
+          var remeasured = false;
+          for (i = lo; i < hi && i < n; i++) {
+            if (!logs[i].shown) continue;
+            var rec = vpEls[i];
+            if (!rec) {
+              var el = vpRow(i);
+              logBody.insertBefore(el, botSp);
+              rec = { el: el, top: -1 };
+              vpEls[i] = rec;
+            }
+            if (rec.top !== csum[i]) {
+              rec.top = csum[i];
+              rec.el.style.top = csum[i] + "px";
+            }
+            var oh = rec.el.offsetHeight;
+            if (logs[i].h !== oh) {
+              logs[i].h = oh;
+              remeasured = true;
+            }
+            rec.el.classList.toggle("tl-mark", i === markIndex);
+          }
+          topSp.style.height = csum[lo] + "px";
+          botSp.style.height = csum[n] - csum[lo] + "px";
+          if (remeasured) {
+            rebuildCsum();
+            for (i = lo; i < hi && i < n; i++) {
+              if (!logs[i].shown) continue;
+              if (vpEls[i]) {
+                vpEls[i].top = csum[i];
+                vpEls[i].el.style.top = csum[i] + "px";
+              }
+            }
+            topSp.style.height = csum[lo] + "px";
+            botSp.style.height = csum[n] - csum[lo] + "px";
+          }
+        }
+        function vpNeed() {
+          if (vpTick || !logBody) return;
+          vpTick = true;
+          raf(vpRender);
+        }
+        function vpRefluid() {
+          if (!logBody) return;
+          vpSpacers();
+          vpWrapped = wrapChk.checked;
+          if (!vpProbe) {
+            vpProbe = document.createElement("div");
+            vpProbe.className = "logline";
+            vpProbe.style.position = "absolute";
+            vpProbe.style.top = "-1000px";
+            vpProbe.style.left = "0";
+            vpProbe.style.right = "0";
+            vpProbe.style.visibility = "hidden";
+            vpProbe.style.pointerEvents = "none";
+            var ps = document.createElement("span");
+            ps.className = "lb-stream stream-out";
+            ps.textContent = "stdout";
+            var pt = document.createElement("span");
+            pt.className = "lb-time";
+            pt.textContent = "ts";
+            var pmsg = document.createElement("span");
+            pmsg.className = "lb-msg";
+            var pchar = document.createElement("i");
+            pchar.className = "vp-char";
+            pchar.textContent = "00000000000000000000000";
+            pmsg.appendChild(pchar);
+            vpProbe.appendChild(ps);
+            vpProbe.appendChild(pt);
+            vpProbe.appendChild(pmsg);
+            logBody.appendChild(vpProbe);
+          }
+          var mspan = vpProbe.querySelector(".lb-msg");
+          var cchr = vpProbe.querySelector(".vp-char");
+          var mw = mspan && mspan.clientWidth ? mspan.clientWidth : 0;
+          var cwpx =
+            cchr && cchr.clientWidth && cchr.textContent
+              ? cchr.clientWidth / cchr.textContent.length
+              : 0;
+          vpChars =
+            mw > 0 && cwpx > 0 ? Math.max(8, Math.floor(mw / cwpx)) : 100;
+          var oh = vpProbe.offsetHeight;
+          var lh = mspan
+            ? parseFloat(window.getComputedStyle(mspan).lineHeight || "0")
+            : 0;
+          vpLead = oh > 0 ? oh : lh > 0 ? Math.ceil(lh) + 3 : 21;
+          var i;
+          for (i = 0; i < logs.length; i++) {
+            logs[i].est = vpEstimate(logs[i]);
+            logs[i].h = 0;
+          }
+          rebuildCsum();
+          vpClearRows();
+          vpNeed();
+        }
+
+        /* ---------- таймлайн лог-потока по timestamp ---------- */
+        function tlFmt(ms, span) {
+          var d = new Date(ms);
+          var p = function (x) {
+            return String(x).padStart(2, "0");
+          };
+          var hm =
+            p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+          if (span > 86400000)
+            return d.getMonth() + 1 + "-" + p(d.getDate()) + " " + hm;
+          return hm;
+        }
+        function tlReset() {
+          tlTimes = [];
+          tlErrs = [];
+          tlMin = null;
+          tlMax = null;
+          tlLines = 0;
+          tlCounts = null;
+          tlErrPrev = null;
+          if (tlBins) tlBins.innerHTML = "";
+          tlBinEls = null;
+          if (tlBar) {
+            tlBar.style.setProperty("--tl0", 0);
+            tlBar.style.setProperty("--tl1", 1);
+          }
+          if (tlStart) tlStart.textContent = "";
+          if (tlEnd) tlEnd.textContent = "";
+          if (tlTip) {
+            tlTip.classList.add("hidden");
+            tlTip.textContent = "";
+          }
+          tlSchedule();
+        }
+        function tlAdd(ms, isErr) {
+          if (isNaN(ms)) return;
+          if (tlLines === 0) {
+            tlMin = ms;
+            tlMax = ms;
+          } else {
+            if (ms < tlMin) tlMin = ms;
+            if (ms > tlMax) tlMax = ms;
+          }
+          tlLines++;
+          tlTimes.push(ms);
+          tlErrs.push(isErr ? 1 : 0);
+          tlBar.style.setProperty("--tl0", tlMin);
+          tlBar.style.setProperty("--tl1", tlMax + 1);
+          tlStart.textContent = tlFmt(tlMin, tlMax - tlMin);
+          tlEnd.textContent = tlFmt(tlMax, tlMax - tlMin);
+          tlSchedule();
+        }
+        function tlSchedule() {
+          if (tlDirty) return;
+          tlDirty = true;
+          var wait = Math.max(0, TL_INTERVAL - (Date.now() - tlLastRender));
+          setTimeout(function () {
+            if (tlDirty) tlRender();
+          }, wait);
+        }
+        function tlRender() {
+          tlDirty = false;
+          tlLastRender = Date.now();
+          if (!tlBins || tlLines === 0) return;
+          var span = tlMax - tlMin + 1;
+          if (span <= 0) return;
+          var counts = new Array(NBINS),
+            errs = new Array(NBINS);
+          var i;
+          for (i = 0; i < NBINS; i++) {
+            counts[i] = 0;
+            errs[i] = 0;
+          }
+          for (i = 0; i < tlTimes.length; i++) {
+            var idx = Math.floor(((tlTimes[i] - tlMin) / span) * NBINS);
+            if (idx < 0) idx = 0;
+            else if (idx >= NBINS) idx = NBINS - 1;
+            counts[idx]++;
+            if (tlErrs[i]) errs[idx] = 1;
+          }
+          if (tlCounts) {
+            var same = true;
+            for (i = 0; i < NBINS; i++) {
+              if (tlCounts[i] !== counts[i] || tlErrPrev[i] !== errs[i]) {
+                same = false;
+                break;
+              }
+            }
+            if (same) return;
+          }
+          var maxc = 1;
+          for (i = 0; i < NBINS; i++) if (counts[i] > maxc) maxc = counts[i];
+          if (!tlBinEls) {
+            tlBinEls = [];
+            for (i = 0; i < NBINS; i++) {
+              var col = document.createElement("i");
+              col.className = "bin";
+              tlBins.appendChild(col);
+              tlBinEls.push(col);
+            }
+          }
+          for (i = 0; i < NBINS; i++) {
+            var c = tlBinEls[i];
+            c.classList.toggle("err", !!errs[i]);
+            c.style.opacity = counts[i] ? "1" : "0";
+            c.style.height = Math.round((counts[i] / maxc) * 94) + "%";
+          }
+          tlCounts = counts;
+          tlErrPrev = errs;
+        }
+        function tlPos(ev) {
+          var rect = tlBar.getBoundingClientRect();
+          if (!rect.width || tlMin === null) return null;
+          var x = ev.clientX - rect.left;
+          var frac = Math.max(0, Math.min(1, x / rect.width));
+          return { frac: frac, t: tlMin + frac * (tlMax - tlMin), x: x };
+        }
+        function tlJump(slot) {
+          if (slot < 0 || slot >= logs.length) return;
+          logBody.scrollTop = Math.max(
+            0,
+            csum[slot] - logBody.clientHeight / 3,
+          );
+          markIndex = slot;
+          if (markTimer) clearTimeout(markTimer);
+          markTimer = setTimeout(function () {
+            markIndex = -1;
+          }, 1600);
+          vpNeed();
+        }
+        tlBar.addEventListener("mousemove", function (ev) {
+          var p = tlPos(ev);
+          if (!p || !tlCounts) return;
+          tlTip.classList.remove("hidden");
+          var bidx = Math.floor(p.frac * NBINS);
+          if (bidx < 0) bidx = 0;
+          else if (bidx >= NBINS) bidx = NBINS - 1;
+          var c = tlCounts[bidx] || 0;
+          var span = tlMax - tlMin + 1;
+          var t0b = tlMin + (bidx / NBINS) * span;
+          var t1b = tlMin + ((bidx + 1) / NBINS) * span;
+          tlTip.textContent =
+            c +
+            " logs \u00B7 " +
+            tlFmt(t0b, span) +
+            " \u2192 " +
+            tlFmt(t1b, span);
+          tlTip.style.left = p.x + "px";
+        });
+        tlBar.addEventListener("mouseleave", function () {
+          tlTip.classList.add("hidden");
+        });
+        tlBar.addEventListener("click", function (ev) {
+          var p = tlPos(ev);
+          if (!p) return;
+          var span = tlMax - tlMin + 1;
+          var b = Math.floor(p.frac * NBINS);
+          if (b < 0) b = 0;
+          else if (b >= NBINS) b = NBINS - 1;
+          var tStart = tlMin + (b / NBINS) * span;
+          for (var i = 0; i < logs.length; i++) {
+            var it = logs[i];
+            if (it.shown && it.tsMs >= 0 && it.tsMs >= tStart) {
+              tlJump(i);
+              return;
+            }
+          }
+        });
+
+        /* ---------- автоскролл ---------- */
+        var scrollTick = false;
+        function followScrollBatch() {
+          if (paused || settling || !autoScrollOn()) return;
+          if (mask.hidden || scrollTick) return;
+          scrollTick = true;
+          raf(function () {
+            scrollTick = false;
+            if (paused || settling || !autoScrollOn()) return;
+            if (mask.hidden) return;
+            raf(function () {
+              if (paused || settling || !autoScrollOn()) return;
+              if (mask.hidden) return;
+              if (
+                !stickBottom &&
+                logBody.scrollHeight -
+                  logBody.scrollTop -
+                  logBody.clientHeight >
+                  80
+              )
+                return;
+              stickBottom = true;
+              logBody.scrollTop = logBody.scrollHeight;
+            });
+          });
+        }
+
+        /* ---------- обработчики ---------- */
+        filter.addEventListener("input", applyLogFilter);
+        insens.addEventListener("change", applyLogFilter);
+        ctxChk.addEventListener("change", applyLogFilter);
+        document
+          .querySelectorAll('input[name="logMode"]')
+          .forEach(function (r) {
+            r.addEventListener("change", applyLogFilter);
+          });
+
+        autoScroll.addEventListener("click", function () {
+          autoScroll.classList.toggle("on");
+          if (autoScrollOn()) {
+            stickBottom = true;
+            logBody.scrollTop = logBody.scrollHeight;
+          } else {
+            stickBottom = false;
+          }
+          vpNeed();
+        });
+        logBody.addEventListener("scroll", function () {
+          var near =
+            logBody.scrollHeight - logBody.scrollTop - logBody.clientHeight <
+            60;
+          if (!near) {
+            stickBottom = false;
+            if (autoScrollOn()) autoScroll.classList.remove("on");
+          }
+          jump.classList.toggle("show", !near);
+          vpNeed();
+        });
+        jump.addEventListener("click", function () {
+          stickBottom = true;
+          logBody.scrollTop = logBody.scrollHeight;
+          if (!autoScrollOn()) autoScroll.classList.add("on");
+          vpNeed();
+        });
+
+        sinceSel.addEventListener("change", restartIfStreaming);
+        linesSel.addEventListener("change", restartIfStreaming);
+        outChk.addEventListener("change", restartIfStreaming);
+        errChk.addEventListener("change", restartIfStreaming);
+
+        followChk.addEventListener("click", function () {
+          followChk.classList.toggle("on");
+          if (followOn()) {
+            restartIfStreaming();
+          } else {
+            closeStream();
+            setConn("Stopped", "off");
+          }
+        });
+
+        btnPause.addEventListener("click", function () {
+          if (paused) {
+            paused = false;
+            btnPause.textContent = "Pause";
+            btnPause.classList.remove("on");
+            if (lastTs) {
+              startStream();
+            } else {
+              clearLog();
+              loadHistory();
+            }
+          } else {
+            paused = true;
+            btnPause.textContent = "Resume";
+            btnPause.classList.add("on");
+            closeStream();
+            setConn("Paused", "wait");
+          }
+        });
+
+        wrapChk.addEventListener("change", function () {
+          logBody.classList.toggle("no-wrap", !wrapChk.checked);
+          vpRefluid();
+        });
+        tsChk.addEventListener("change", function () {
+          logBody.classList.toggle("no-ts", !tsChk.checked);
+          vpRefluid();
+        });
+        streamChk.addEventListener("change", function () {
+          logBody.classList.toggle("no-stream", !streamChk.checked);
+          vpRefluid();
+        });
+
+        btnClearLogs.addEventListener("click", function () {
+          clearLog();
+          if (followOn() && !paused) loadHistory();
+        });
+
+        btnDownload.addEventListener("click", function () {
+          var lines = [];
+          for (var i = 0; i < logs.length; i++) {
+            var it = logs[i];
+            if (it.shown)
+              lines.push(it.stream + " " + fmtTs(it.ts) + " " + it.msg);
+          }
+          if (!lines.length) return;
+          var blob = new Blob([lines.join("\n")], {
+            type: "text/plain;charset=utf-8",
+          });
+          var a = document.createElement("a");
+          var f = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+          a.href = URL.createObjectURL(blob);
+          a.download = (cur ? cur.name : "container") + "-" + f + ".log";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(a.href);
+        });
+
         function open(id, name, compose) {
           cur = { id: id, name: name };
           title.textContent = compose && name ? compose + "/" + name : name;
           mask.hidden = false;
           document.body.style.overflow = "hidden";
+          paused = false;
+          btnPause.textContent = "Pause";
+          btnPause.classList.remove("on");
+          stickBottom = true;
           reset();
-          load();
+          loadHistory();
         }
         function close() {
-          stop();
+          closeStream();
           cur = null;
           mask.hidden = true;
           document.body.style.overflow = "";
-          out.textContent = "";
+          reset();
         }
-        out.addEventListener("scroll", sync);
-        jump.addEventListener("click", doScroll);
         $("logsClose").addEventListener("click", close);
-        selFollow.addEventListener("change", function () {
-          if (selFollow.checked) {
-            doScroll();
-          } else {
-            stop();
-          }
-        });
-        $("logsTail").addEventListener("change", reload);
-        selOut.addEventListener("change", reload);
-        selErr.addEventListener("change", reload);
-        selTime.addEventListener("change", function () {
-          out.querySelectorAll(".log-time").forEach(function (t) {
-            t.hidden = !selTime.checked;
-          });
-        });
-        selWrap.addEventListener("change", function () {
-          out.classList.toggle("nowrap", !selWrap.checked);
-        });
-        selContext.addEventListener("change", filterLines);
-        selAnd.addEventListener("change", function () {
-          if (selAnd.checked) {
-            selOr.checked = false;
-            selRegex.checked = false;
-          }
-          filterLines();
-        });
-        selOr.addEventListener("change", function () {
-          if (selOr.checked) {
-            selAnd.checked = false;
-            selRegex.checked = false;
-          }
-          filterLines();
-        });
-        selRegex.addEventListener("change", function () {
-          if (selRegex.checked) {
-            selAnd.checked = false;
-            selOr.checked = false;
-          }
-          filterLines();
-        });
-        filter.addEventListener("input", filterLines);
         mask.addEventListener("click", function (e) {
           if (e.target === mask) close();
         });
@@ -1599,6 +2805,8 @@
         document.addEventListener("keydown", function (e) {
           if (e.key === "Escape" && !mask.hidden) close();
         });
+
+        vpSpacers();
       })();
       (function () {
         var tip = document.createElement("div");
