@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>logPorter — Sign in</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --border: #2a2f3a;
+        --text: #e6e9ef;
+        --muted: #8b93a1;
+        --danger: #f87171;
+        --accent: #38bdf8;
+        --acc-ink: #08111f;
+        --orange: #f39c12;
+        --line: #2a2f3a;
+      }
+      :root[data-theme="light"] {
+        --bg: #f4f6f9;
+        --panel: #ffffff;
+        --border: #d8dde5;
+        --text: #1f2430;
+        --muted: #5b6472;
+        --danger: #c9372c;
+        --accent: #1d6fb8;
+        --acc-ink: #ffffff;
+        --orange: #b06a00;
+        --line: #d8dde5;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg);
+        color: var(--text);
+        font:
+          15px/1.5 system-ui,
+          "Segoe UI",
+          sans-serif;
+      }
+      .card {
+        width: min(380px, calc(100vw - 40px));
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 28px 30px 26px;
+      }
+      .logo {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        text-align: center;
+        padding-top: 10px;
+        margin-bottom: 20px;
+      }
+      .logo .logo-w {
+        color: var(--orange);
+      }
+      .logo .logo-p {
+        color: var(--accent);
+      }
+      input {
+        display: block;
+        width: 100%;
+        padding: 9px 11px;
+        background: var(--bg);
+        color: var(--text);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font: inherit;
+        outline: none;
+      }
+      input:focus {
+        border-color: var(--accent);
+      }
+      input + input {
+        margin-top: 12px;
+      }
+      .btn {
+        width: 100%;
+        margin-top: 22px;
+        padding: 10px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--accent);
+        color: var(--acc-ink);
+        font:
+          600 15px/1 system-ui,
+          sans-serif;
+        cursor: pointer;
+      }
+      .btn:hover {
+        filter: brightness(1.06);
+      }
+      .err {
+        margin: 0 0 16px;
+        padding: 9px 11px;
+        border: 1px solid var(--danger);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--danger) 10%, transparent);
+        color: var(--danger);
+        font-size: 13px;
+        text-align: center;
+      }
+      .theme {
+        position: fixed;
+        top: 14px;
+        right: 14px;
+        width: 38px;
+        height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--panel);
+        color: var(--text);
+        font-size: 16px;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <button
+      id="themeBtn"
+      class="theme"
+      type="button"
+      title="Switch theme"
+    ></button>
+    <form class="card" method="post" action="/login">
+      <div class="logo">
+        <span class="logo-w">log</span><span class="logo-p">Porter</span>
+      </div>
+      {{if .Error}}
+      <div class="err">{{.Error}}</div>
+      {{end}}
+      <input
+        id="username"
+        name="username"
+        placeholder="Username"
+        autocomplete="username"
+        autofocus
+        required
+      />
+      <input
+        id="password"
+        name="password"
+        type="password"
+        placeholder="Password"
+        autocomplete="current-password"
+        required
+      />
+      <button class="btn" type="submit">Sign in</button>
+    </form>
+    <script>
+      (function () {
+        var key = "docker-exporter-theme";
+        var theme =
+          localStorage.getItem(key) ||
+          (matchMedia("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light");
+        document.documentElement.setAttribute("data-theme", theme);
+        var btn = document.getElementById("themeBtn");
+        var icons = { dark: "🌙", light: "☀️" };
+        function sync() {
+          btn.textContent =
+            icons[document.documentElement.getAttribute("data-theme")];
+        }
+        btn.addEventListener("click", function () {
+          var t = document.documentElement.getAttribute("data-theme");
+          var n = t === "dark" ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", n);
+          localStorage.setItem(key, n);
+          sync();
+        });
+        sync();
+      })();
+    </script>
+  </body>
+</html>

@@ -88,8 +88,14 @@
         z-index: 10;
       }
       header h1 {
-        font-size: 18px;
+        font-size: 22px;
         margin: 0;
+      }
+      header h1 .logo-w {
+        color: var(--orange);
+      }
+      header h1 .logo-p {
+        color: var(--accent);
       }
       header .sub {
         color: var(--muted);
@@ -107,6 +113,7 @@
         font: inherit;
         font-size: 13px;
         cursor: pointer;
+        text-decoration: none;
         transition:
           border-color 0.2s,
           background 0.2s,
@@ -1055,7 +1062,7 @@
   </head>
   <body>
     <header>
-      <h1>logPorter Dashboard</h1>
+      <h1><span class="logo-w">log</span><span class="logo-p">Porter</span></h1>
       <span class="spacer"></span>
       <button
         id="pauseBtn"
@@ -1089,6 +1096,9 @@
       >
         ☀️ Light
       </button>
+      {{if .Auth}}
+      <a class="theme-btn" href="/logout" title="Sign out">⏻ Logout</a>
+      {{end}}
     </header>
     <main>
       <div id="cards">{{template "cards" .}}</div>

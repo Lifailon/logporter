@@ -17,6 +17,7 @@ type Data struct {
 	ContainerGroups []ContainerGroup
 	Images          []Image
 	Volumes         []Volume
+	Auth            bool
 }
 
 type ContainerGroup struct {

@@ -16,6 +16,7 @@ import (
 	"github.com/containerd/errdefs"
 	"github.com/docker/docker/client"
 
+	"logporter/internal/auth"
 	"logporter/internal/dashboard"
 	"logporter/internal/logs"
 	"logporter/internal/metrics"
@@ -220,6 +221,18 @@ func main() {
 		logger.Info("log collection and sending to Loki is enabled", "url", lokiClient.URL)
 	}
 
+	// Basic authorization for the Dashboard
+	authEnabled := auth.Setup()
+	if authEnabled {
+		if t := auth.TTL(); t > 0 {
+			logger.Info("dashboard auth enabled", "user", os.Getenv("DASHBOARD_USERNAME"), "ttl", t)
+		} else {
+			logger.Info("dashboard auth enabled", "user", os.Getenv("DASHBOARD_USERNAME"), "ttl", 0)
+		}
+	} else {
+		logger.Info("dashboard auth disabled (set DASHBOARD_USERNAME and DASHBOARD_PASSWORD to enable)")
+	}
+
 	// Create HTTP server
 	httpServerMux := http.NewServeMux()
 
@@ -273,7 +286,9 @@ func main() {
 	// Endpoint: /dashboard
 	httpServerMux.HandleFunc("/dashboard", func(w http.ResponseWriter, r *http.Request) {
 		refreshMetrics(r.Context())
-		html, err := dashboard.Render(exporter.DashboardData())
+		data := exporter.DashboardData()
+		data.Auth = auth.Enabled()
+		html, err := dashboard.Render(data)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = fmt.Fprintln(w, err)
@@ -385,7 +400,7 @@ func main() {
 	// Start HTTP server
 	httpServer := &http.Server{
 		Addr:    ":" + port,
-		Handler: logSrv,
+		Handler: auth.Middleware(logSrv, logger),
 	}
 	logger.Info("exporter started", "port", port)
 	go func() {
