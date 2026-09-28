@@ -46,12 +46,6 @@ func fakeDockerClient(t *testing.T, handler http.Handler) *client.Client {
 	return c
 }
 
-func writeFrames(w http.ResponseWriter, frames ...[]byte) {
-	for _, f := range frames {
-		_, _ = w.Write(f)
-	}
-}
-
 func frameStdout(content string) []byte { return logFrame(1, content) }
 func frameStderr(content string) []byte { return logFrame(2, content) }
 
@@ -608,7 +602,7 @@ func lokiServer(t *testing.T, status int) (*httptest.Server, *atomic.Int64) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		defer gz.Close()
+		defer func() { _ = gz.Close() }()
 		var req lokiPushRequest
 		if err := json.NewDecoder(gz).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)

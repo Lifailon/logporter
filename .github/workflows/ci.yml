@@ -62,9 +62,9 @@ jobs:
 
       - name: Go unit test
         if: ${{ github.event.inputs.Test == 'true' }}
-        run: go test -json ./... > test.json
+        run: go test ./... -json -cover > test.json
 
-      - name: Publish test report to GitHub Summary
+      - name: Publish unit test report using tparse to GitHub Summary
         if: ${{ github.event.inputs.Test == 'true' }}
         run: |
           go install github.com/mfridman/tparse@latest

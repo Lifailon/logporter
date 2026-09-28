@@ -47,13 +47,6 @@ func assertContains(t *testing.T, lines []string, want string) {
 	t.Fatalf("expected a line containing %q, got:\n%s", want, strings.Join(lines, "\n"))
 }
 
-func assertContainsS(t *testing.T, s, want string) {
-	t.Helper()
-	if !strings.Contains(s, want) {
-		t.Fatalf("expected %q in output, got: %s", want, s)
-	}
-}
-
 const validSha256Hex = "abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
 
 func TestHumanBytes(t *testing.T) {
