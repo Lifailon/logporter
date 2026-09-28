@@ -8,6 +8,7 @@ services:
       - 9333:9333
     environment:
       - LOG_LEVEL=info
+      - DOCKER_METRICS_HOST=
       - DOCKER_METRICS_PORT=9333
       - DOCKER_METRICS_HOSTNAME=
       - DOCKER_METRICS_CUSTOM_LABELS=org.opencontainers.image.url,org.opencontainers.image.version,org.opencontainers.image.created

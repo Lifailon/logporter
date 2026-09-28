@@ -76,12 +76,16 @@ func checkContainerID(id string) bool {
 func main() {
 	// Health check on /health endpoint using built-in probe for scratch image
 	if len(os.Args) > 1 && os.Args[1] == "--healthcheck" {
+		host := os.Getenv("DOCKER_METRICS_HOST")
+		if host == "" || host == "0.0.0.0" {
+			host = "localhost"
+		}
 		port := os.Getenv("DOCKER_METRICS_PORT")
 		if port == "" {
 			port = "9333"
 		}
 		client := &http.Client{Timeout: 5 * time.Second}
-		response, err := client.Get("http://localhost:" + port + "/health")
+		response, err := client.Get("http://" + host + ":" + port + "/health")
 		if err != nil {
 			os.Exit(1)
 		}
@@ -122,6 +126,9 @@ func run(stop <-chan os.Signal) int {
 
 	var hostname string
 	var port string
+	var host string
+
+	host = os.Getenv("DOCKER_METRICS_HOST")
 
 	port = "9333"
 	envPort := os.Getenv("DOCKER_METRICS_PORT")
@@ -407,10 +414,10 @@ func run(stop <-chan os.Signal) int {
 
 	// Start HTTP server
 	httpServer := &http.Server{
-		Addr:    ":" + port,
+		Addr:    host + ":" + port,
 		Handler: auth.Middleware(logSrv, logger),
 	}
-	logger.Info("exporter started", "port", port)
+	logger.Info("exporter started", "host", host, "port", port)
 	serverErr := make(chan error, 1)
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {

@@ -88,6 +88,7 @@ List of environment variables to configure:
 | Label                           | Type      | Default | Description
 | -                               | -         | -       | -
 | `LOG_LEVEL`                     | `string`  | `info`  | Use debug to get detailed output of the exporter operation or error to suppress the output of info messages
+| `DOCKER_METRICS_HOST`           | `string`  | `""`    | Host/IP address on which the HTTP server listens (default is all interfaces `0.0.0.0`; set e.g. `127.0.0.1` when running standalone binary outside Docker)
 | `DOCKER_METRICS_PORT`           | `int`     | `9333`  | The port on which the exporter is listening
 | `DOCKER_METRICS_HOSTNAME`       | `string`  | `""`    | Custom hostname displayed in Prometheus and Loki labels (by default from Docker API or OS)
 | `DOCKER_METRICS_CUSTOM_LABELS`  | `string`  | `""`    | List of custom labels that will be added to all container metrics (only if present, e.g. `org.opencontainers.image.version`)

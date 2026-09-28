@@ -541,6 +541,23 @@ func TestRunServerBindError(t *testing.T) {
 	}
 }
 
+func TestRunCustomHost(t *testing.T) {
+	daemon, _ := fakeDockerDaemon(t)
+	t.Setenv("DOCKER_HOST", daemon)
+	port := freePort(t)
+	t.Setenv("DOCKER_METRICS_HOST", "127.0.0.1")
+	t.Setenv("DOCKER_METRICS_PORT", port)
+	t.Setenv("DOCKER_METRICS_IMAGE_UPDATE", "false")
+	t.Setenv("DOCKER_METRICS_VOLUME", "false")
+	t.Setenv("LOG_LEVEL", "error")
+	stop, done := runStart(t)
+	waitServerReady(t, port)
+	close(stop)
+	if code := <-done; code != 0 {
+		t.Fatalf("run with custom host must exit 0, got %d", code)
+	}
+}
+
 func TestRunDockerClientError(t *testing.T) {
 	t.Setenv("DOCKER_HOST", "not-a-host")
 	t.Setenv("LOG_LEVEL", "error")
