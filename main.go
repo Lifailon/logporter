@@ -92,6 +92,14 @@ func main() {
 		return
 	}
 
+	// Wait for a termination signal, then run the exporter until it stops
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	os.Exit(run(stop))
+}
+
+// Starts the HTTP server and workers for metric processing, and blocks execution until a shutdown signal is received
+func run(stop <-chan os.Signal) int {
 	// Get environment variables
 	envLogLevel := os.Getenv("LOG_LEVEL")
 	logLevel := logLevelParse(strings.ToLower(envLogLevel))
@@ -108,7 +116,7 @@ func main() {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		logger.Error("failed to create Docker client", "error", err)
-		os.Exit(1)
+		return 1
 	}
 	defer func() { _ = dockerClient.Close() }()
 
@@ -403,17 +411,23 @@ func main() {
 		Handler: auth.Middleware(logSrv, logger),
 	}
 	logger.Info("exporter started", "port", port)
+	serverErr := make(chan error, 1)
 	go func() {
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Error("failed to start HTTP server", "error", err)
-			os.Exit(1)
+			serverErr <- err
 		}
 	}()
 
-	// Graceful shutdown on signal
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
+	// Graceful shutdown on signal or when the HTTP server fails to start
+	select {
+	case <-stop:
+	case err := <-serverErr:
+		logger.Error("failed to start HTTP server", "error", err)
+		if lokiCancel != nil {
+			lokiCancel()
+		}
+		return 1
+	}
 	if lokiCancel != nil {
 		lokiCancel()
 	}
@@ -421,4 +435,5 @@ func main() {
 	defer shutdownCancel()
 	_ = httpServer.Shutdown(shutdownCtx)
 	logger.Info("exporter stopped")
+	return 0
 }
