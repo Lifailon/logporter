@@ -9,6 +9,9 @@ import (
 //go:embed dashboard.tmpl
 var templateFS embed.FS
 
+//go:embed dashboard.js
+var dashboardJS []byte
+
 var tmpl = template.Must(template.New("dashboard.tmpl").ParseFS(templateFS, "dashboard.tmpl"))
 
 type Data struct {
@@ -18,6 +21,7 @@ type Data struct {
 	Images          []Image
 	Volumes         []Volume
 	Auth            bool
+	Script          template.JS
 }
 
 type ContainerGroup struct {
@@ -154,6 +158,7 @@ type Volume struct {
 }
 
 func Render(data Data) (template.HTML, error) {
+	data.Script = template.JS(dashboardJS)
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
 		return "", err
