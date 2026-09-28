@@ -213,8 +213,8 @@ func TestCPUContainerPerc(t *testing.T) {
 	m := &Metrics{
 		baseMetrics:     map[string]*BaseMetrics{"a": {cpuTotal: 10}},
 		previousMetrics: map[string]previousMetrics{"a": {cpu: 8}},
-		cpuCurrentTime:  time.Now(),
-		cpuPreviousTime: time.Now().Add(-time.Second),
+		cpuCurrentTime:  time.Time{}.Add(time.Second),
+		cpuPreviousTime: time.Time{},
 	}
 	if p, ok := m.cpuContainerPerc("a", 10); !ok || p != 200 {
 		t.Fatalf("cpuContainerPerc ok = %v/%v, want 200/true", p, ok)
@@ -238,8 +238,8 @@ func TestCPUHostPerc(t *testing.T) {
 		Info:            &Info{numberCPU: 4},
 		baseMetrics:     map[string]*BaseMetrics{"a": {cpuTotal: 10}},
 		previousMetrics: map[string]previousMetrics{"a": {cpu: 8}},
-		cpuCurrentTime:  time.Now(),
-		cpuPreviousTime: time.Now().Add(-time.Second),
+		cpuCurrentTime:  time.Time{}.Add(time.Second),
+		cpuPreviousTime: time.Time{},
 	}
 	if p, ok := m.cpuHostPerc(); !ok || p != 50 {
 		t.Fatalf("cpuHostPerc = %v/%v, want 50/true", p, ok)
@@ -275,8 +275,8 @@ func TestContainerNSRate(t *testing.T) {
 	m := &Metrics{
 		baseMetrics:     map[string]*BaseMetrics{"a": {}},
 		previousMetrics: map[string]previousMetrics{"a": {netRX: 1000, netTX: 1000, ioRead: 10, ioWrite: 10}},
-		cpuCurrentTime:  time.Now(),
-		cpuPreviousTime: time.Now().Add(-time.Second),
+		cpuCurrentTime:  time.Time{}.Add(time.Second),
+		cpuPreviousTime: time.Time{},
 	}
 	rx, tx, rd, wr, ok := m.containerNSRate("a", 2000, 2000, 20, 20)
 	if !ok || rx != 1000 || tx != 1000 || rd != 10 || wr != 10 {
@@ -311,8 +311,8 @@ func TestDashboardData(t *testing.T) {
 		previousMetrics: map[string]previousMetrics{
 			"abc": {cpu: 8, netRX: 4000, netTX: 4000, ioRead: 0, ioWrite: 0},
 		},
-		cpuCurrentTime:  time.Now(),
-		cpuPreviousTime: time.Now().Add(-time.Second),
+		cpuCurrentTime:  time.Time{}.Add(time.Second),
+		cpuPreviousTime: time.Time{},
 		inspectMetrics: map[string]*InspectMetric{
 			"abc": {startedTimestamp: 1700000000, healthy: 1, exitCode: 0, oomKilled: 0, memoryLimit: 4 << 30, sizeRw: 100, sizeRootFs: 500, volumeMounts: 1, bindMounts: 0},
 			"def": {startedTimestamp: 0, healthy: 2, exitCode: 137, oomKilled: 1, memoryLimit: 0, sizeRw: 0, sizeRootFs: 0, volumeMounts: 0, bindMounts: 1},
