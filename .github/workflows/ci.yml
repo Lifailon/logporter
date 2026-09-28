@@ -65,7 +65,7 @@ jobs:
         run: go test ./... -json -cover > test.json
 
       - name: Publish unit test report using tparse to GitHub Summary
-        if: ${{ github.event.inputs.Test == 'true' }}
+        if: ${{ always() && github.event.inputs.Test == 'true' }}
         run: |
           go install github.com/mfridman/tparse@latest
           tparse -all -format=markdown -file test.json >> $GITHUB_STEP_SUMMARY
