@@ -145,7 +145,7 @@ func TestMiddlewareRedirectsToLogin(t *testing.T) {
 			t.Fatal("login page expected in response body")
 		}
 
-		login := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=admin&password=secret"))
+		login := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=admin&password=admin"))
 		login.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		lrec := httptest.NewRecorder()
 		mw.ServeHTTP(lrec, login)
@@ -221,4 +221,172 @@ func TestMiddlewareJSON401ForAPI(t *testing.T) {
 
 func newTestLogger() *slog.Logger {
 	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func TestAuthorizeAllowedWhenDisabled(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "",
+		"DASHBOARD_PASSWORD": "",
+	}, func() {
+		Setup()
+		if !authorize(&http.Request{}) {
+			t.Fatal("authorize must allow every request when auth is disabled")
+		}
+	})
+}
+
+func TestSetupInvalidTTL(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "admin",
+		"DASHBOARD_PASSWORD": "admin",
+		"DASHBOARD_AUTH_TTL": "abc",
+	}, func() {
+		if !Setup() {
+			t.Fatal("auth must be enabled when credentials are set")
+		}
+		if TTL() != 0 {
+			t.Fatalf("an unparseable TTL must default to 0, got %v", TTL())
+		}
+	})
+}
+
+func TestTokenRoundTripWithTTL(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "admin",
+		"DASHBOARD_PASSWORD": "admin",
+		"DASHBOARD_AUTH_TTL": "3600",
+	}, func() {
+		Setup()
+		tok := sessionToken("admin")
+		if !sessionValid(tok) {
+			t.Fatal("freshly issued token with an expiry must validate")
+		}
+	})
+}
+
+func TestSessionValidMalformed(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "admin",
+		"DASHBOARD_PASSWORD": "admin",
+	}, func() {
+		Setup()
+		if sessionValid("%%%not-base64%%%") {
+			t.Fatal("non-base64 token must not validate")
+		}
+		badParts := base64.RawURLEncoding.EncodeToString([]byte("admin|123|45"))
+		if sessionValid(badParts) {
+			t.Fatal("token with a wrong number of parts must not validate")
+		}
+		badNow := base64.RawURLEncoding.EncodeToString([]byte("admin|zzz|45|deadbeef"))
+		if sessionValid(badNow) {
+			t.Fatal("token with an unparseable timestamp must not validate")
+		}
+		badExp := base64.RawURLEncoding.EncodeToString([]byte("admin|10|xyz|deadbeef"))
+		if sessionValid(badExp) {
+			t.Fatal("token with an unparseable expiry must not validate")
+		}
+	})
+}
+
+func TestMiddlewareDisabledPassesThrough(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "",
+		"DASHBOARD_PASSWORD": "",
+	}, func() {
+		Setup()
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte("ok"))
+		})
+		mw := Middleware(next, newTestLogger())
+		for _, path := range []string{"/dashboard", "/login", "/api/x", "/health"} {
+			rec := httptest.NewRecorder()
+			mw.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+			if rec.Code != http.StatusOK || rec.Body.String() != "ok" {
+				t.Fatalf("auth-disabled middleware must pass %s through, got %d", path, rec.Code)
+			}
+		}
+	})
+}
+
+func TestMiddlewareFaviconAllowed(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "admin",
+		"DASHBOARD_PASSWORD": "admin",
+	}, func() {
+		Setup()
+		var hit string
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hit = r.URL.Path
+			_, _ = w.Write([]byte("ico"))
+		})
+		mw := Middleware(next, newTestLogger())
+		rec := httptest.NewRecorder()
+		mw.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/favicon.ico", nil))
+		if hit != "/favicon.ico" {
+			t.Fatal("favicon must reach the handler without a session")
+		}
+	})
+}
+
+func TestMiddlewareLogout(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "admin",
+		"DASHBOARD_PASSWORD": "admin",
+	}, func() {
+		Setup()
+		var hit bool
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hit = true })
+		mw := Middleware(next, newTestLogger())
+		rec := httptest.NewRecorder()
+		mw.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/logout", nil))
+		if hit {
+			t.Fatal("logout must not reach the inner handler")
+		}
+		if rec.Code != http.StatusFound {
+			t.Fatalf("logout must redirect, got %d", rec.Code)
+		}
+		cookies := rec.Result().Cookies()
+		if len(cookies) == 0 || cookies[0].Name != cookieName || cookies[0].MaxAge != -1 {
+			t.Fatal("logout must clear the session cookie")
+		}
+	})
+}
+
+func TestLoginGetShowsPage(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "admin",
+		"DASHBOARD_PASSWORD": "admin",
+	}, func() {
+		Setup()
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+		mw := Middleware(next, newTestLogger())
+		rec := httptest.NewRecorder()
+		mw.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/login", nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET /login must render the page, got %d", rec.Code)
+		}
+		if !strings.Contains(rec.Body.String(), "Sign in") {
+			t.Fatal("login page expected in response body")
+		}
+	})
+}
+
+func TestLoginSetsTTLMaxAge(t *testing.T) {
+	withEnv(t, map[string]string{
+		"DASHBOARD_USERNAME": "admin",
+		"DASHBOARD_PASSWORD": "admin",
+		"DASHBOARD_AUTH_TTL": "3600",
+	}, func() {
+		Setup()
+		next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+		mw := Middleware(next, newTestLogger())
+		login := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader("username=admin&password=admin"))
+		login.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		rec := httptest.NewRecorder()
+		mw.ServeHTTP(rec, login)
+		cookies := rec.Result().Cookies()
+		if len(cookies) == 0 || cookies[0].MaxAge != 3600 {
+			t.Fatalf("cookie MaxAge must match the TTL, got %+v", cookies)
+		}
+	})
 }

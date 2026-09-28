@@ -17,12 +17,15 @@ type versions struct {
 	rawVersion string
 }
 
+// Test seam: allows tests to stub the remote registry call.
+var remoteTagList = remote.List
+
 func getRemoteTagList(ctx context.Context, image string) []string {
 	repositoryName, err := name.NewRepository(image)
 	if err != nil {
 		return nil
 	}
-	remoteTags, err := remote.List(repositoryName, remote.WithContext(ctx))
+	remoteTags, err := remoteTagList(repositoryName, remote.WithContext(ctx))
 	if err != nil {
 		return nil
 	}
