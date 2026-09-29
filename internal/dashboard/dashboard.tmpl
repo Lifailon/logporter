@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -418,18 +418,12 @@
         z-index: 40;
         padding: 20px;
       }
-      .modal-mask {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 40;
-        padding: 20px;
-      }
       .modal-mask[hidden] {
         display: none;
+      }
+      /* Utility toggled from JS, the timeline tooltip relies on it */
+      .hidden {
+        display: none !important;
       }
 
       /* ---------- logs modal (CrossBoard-style, palette matches the page theme) ---------- */
@@ -775,8 +769,6 @@
         font-size: 12.5px;
         line-height: 1.5;
         background: var(--bg2);
-        --ctxw: 9ch;
-        --podw: 16ch;
       }
       #logsModal .log-body.no-wrap {
         overflow-x: auto;
@@ -875,8 +867,6 @@
         background: var(--panel);
         cursor: pointer;
         user-select: none;
-        --tl0: 0;
-        --tl1: 1;
       }
       #logsModal .tl-bins {
         position: absolute;
@@ -1217,8 +1207,22 @@
       <div class="empty">No volumes</div>
       {{end}} {{end}}
     </main>
-    <button id="backTop" type="button" title="Back to top">&uarr;</button>
-    <div id="logsModal" class="modal-mask" hidden>
+    <button
+      id="backTop"
+      type="button"
+      title="Back to top"
+      aria-label="Back to top"
+    >
+      &uarr;
+    </button>
+    <div
+      id="logsModal"
+      class="modal-mask"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="logsTitle"
+      hidden
+    >
       <div class="modal">
         <div class="modal-head">
           <div class="modal-tools">
@@ -1300,13 +1304,11 @@
             </div>
             <div class="mt-row" id="toolsModes">
               <button id="followChk" class="tgl on">Follow</button>
-              <button id="btnPause" class="tgl">Pause</button>
               <button id="autoScroll" class="tgl on">Scroll</button>
               <button id="btnClearLogs">Clear</button>
               <button id="btnDownload">Download</button>
               <select
                 id="sinceSel"
-                class="sel"
                 title="Show logs only from the last N hours"
               >
                 <option value="">Age: all</option>
@@ -1319,11 +1321,7 @@
                 <option value="72h">72h</option>
                 <option value="168h">168h</option>
               </select>
-              <select
-                id="linesSel"
-                class="sel"
-                title="How many history lines to load"
-              >
+              <select id="linesSel" title="How many history lines to load">
                 <option value="0">History: no</option>
                 <option value="100">100</option>
                 <option value="200" selected>200</option>
@@ -1337,12 +1335,22 @@
                 <option value="30000">30000</option>
                 <option value="50000">50000</option>
                 <option value="100000">100000</option>
+                <option value="200000">200000</option>
+                <option value="300000">300000</option>
+                <option value="400000">400000</option>
+                <option value="500000">500000</option>
               </select>
               <span class="conn wait" id="connState">-</span>
               <span class="count" id="lineCount">0</span>
             </div>
           </div>
-          <button id="logsClose" class="modal-close" type="button">
+          <button
+            id="logsClose"
+            class="modal-close"
+            type="button"
+            title="Close logs"
+            aria-label="Close logs"
+          >
             &#10005;
           </button>
         </div>
@@ -1359,6 +1367,7 @@
           class="jump-bottom"
           type="button"
           title="Go to bottom"
+          aria-label="Go to bottom"
         >
           &darr;
         </button>

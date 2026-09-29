@@ -82,7 +82,7 @@ function sortVal(text) {
 }
 
 function parseSizeCell(text) {
-  var m = /^([0-9.]+)\s*([KMGTPE]?i?B)$/i.exec(text.trim());
+  var m = /^([0-9.]+)\s*([KMGTPE]?i?B)(?:\/s)?$/i.exec(text.trim());
   if (!m) {
     return null;
   }
@@ -124,11 +124,17 @@ function parseDurCell(text) {
 
 function parseNumCell(text) {
   var t = text.trim();
+
+  if (t.charAt(t.length - 1) === "%") {
+    t = t.slice(0, -1).trim();
+  }
   return /^[0-9.-]+$/.test(t) ? parseFloat(t) : null;
 }
 
 function parseQuery(q) {
-  var m = /^\s*(>=|<=|>|<|=)\s*([0-9.]+)\s*([a-zA-Z]*)\s*$/.exec(q);
+  var m = /^\s*(>=|<=|>|<|=)\s*([0-9.]+)\s*([a-zA-Z]*)\s*(?:%|\/s)?\s*$/.exec(
+    q,
+  );
   if (!m) {
     return null;
   }
@@ -205,7 +211,7 @@ function rowMatches(row, q, comp) {
   return false;
 }
 
-function applyFilter(table, ti) {
+function applyFilter(table) {
   var search = table.parentElement.querySelector(".search");
   var raw = search ? search.value : "";
   var comp = parseQuery(raw);
@@ -239,7 +245,7 @@ function applyUI(ti) {
     applySort(table, ui.sorts[ti].i, ui.sorts[ti].asc === "1");
   }
   applyCollapsed(table, ti);
-  applyFilter(table, ti);
+  applyFilter(table);
 }
 
 function collapsedProjects() {
@@ -287,7 +293,7 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     search.addEventListener("input", function () {
       ui.filters[ti] = search.value;
       persist();
-      applyFilter(table, ti);
+      applyFilter(table);
     });
     if (ui.filters[ti]) {
       search.value = ui.filters[ti];
@@ -322,7 +328,7 @@ document.querySelectorAll("table").forEach(function (table, ti) {
         });
         ui.collapsed = list;
         persist();
-        applyFilter(table, ti);
+        applyFilter(table);
         syncCollapseAll();
       });
     }
@@ -354,6 +360,40 @@ document.querySelectorAll("table").forEach(function (table, ti) {
   }
   applyUI(ti);
 });
+
+var MAX_MARKS = 2000;
+var MAX_HIGHLIGHT_LEN = 8000;
+function escRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function highlightFrag(text, re) {
+  var f = document.createDocumentFragment();
+  if (!re || text.length > MAX_HIGHLIGHT_LEN) {
+    f.appendChild(document.createTextNode(text));
+    return f;
+  }
+  var last = 0,
+    m,
+    marks = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m[0].length === 0) {
+      re.lastIndex++;
+      continue;
+    }
+    if (marks >= MAX_MARKS) break;
+    if (m.index > last)
+      f.appendChild(document.createTextNode(text.slice(last, m.index)));
+    var mark = document.createElement("mark");
+    mark.textContent = m[0];
+    f.appendChild(mark);
+    last = m.index + m[0].length;
+    marks++;
+  }
+  if (last < text.length)
+    f.appendChild(document.createTextNode(text.slice(last)));
+  re.lastIndex = 0;
+  return f;
+}
 
 (function () {
   var key = "docker-exporter-refresh";
@@ -469,7 +509,6 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     outChk = $("outChk"),
     errChk = $("errChk"),
     followChk = $("followChk"),
-    btnPause = $("btnPause"),
     autoScroll = $("autoScroll"),
     btnClearLogs = $("btnClearLogs"),
     btnDownload = $("btnDownload"),
@@ -477,17 +516,15 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     linesSel = $("linesSel"),
     connState = $("connState"),
     lineCountEl = $("lineCount"),
+    modeSeg = $("modeSeg"),
     jump = $("logsJump");
-  var cur = null,
-    paused = false;
+  var cur = null;
   var ES = null,
-    pollTimer = null,
-    restartTimer = null;
+    pollTimer = null;
   var ssemode = typeof EventSource !== "undefined";
   var lastKey = null,
     lastTs = "";
-  var settling = false,
-    stickBottom = false;
+  var stickBottom = false;
 
   var logs = [];
   var csum = [0];
@@ -496,7 +533,7 @@ document.querySelectorAll("table").forEach(function (table, ti) {
   var markIndex = -1,
     markTimer = null;
 
-  var vpEls = {},
+  var vpEls = new Map(),
     topSp = null,
     botSp = null;
   var vpProbe = null,
@@ -528,9 +565,6 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     else setTimeout(fn, 32);
   }
 
-  function escRe(s) {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
   function iso(ms) {
     return new Date(ms).toISOString();
   }
@@ -557,7 +591,8 @@ document.querySelectorAll("table").forEach(function (table, ti) {
   function tailValue() {
     var v = parseInt(linesSel.value, 10) || 0;
     if (v > 0) return v;
-    return ageSinceMs() ? 100000 : 0;
+
+    return ageSinceMs() ? 500000 : 0;
   }
 
   function addLine(d) {
@@ -607,9 +642,28 @@ document.querySelectorAll("table").forEach(function (table, ti) {
       csum[m0 - 1] = (m0 >= 2 ? csum[m0 - 2] : 0) + hp;
     }
     csum[m0] = csum[m0 - 1] + (it.shown ? vpSlotH(it) : 0);
+    if (logs.length > MAX_LOG_LINES) {
+      dropOldestLines();
+    }
     lineCountEl.textContent = shownLines + " / " + totalLines;
     followScrollBatch();
     vpNeed();
+  }
+
+  function dropOldestLines() {
+    var cut = logs.length - MAX_LOG_LINES;
+    if (cut <= 0) return;
+    logs.splice(0, cut);
+    tlTimes.splice(0, cut);
+    tlErrs.splice(0, cut);
+    csum.splice(0, cut);
+    var delta = csum[0] || 0;
+    for (var i = 0; i < csum.length; i++) {
+      csum[i] -= delta;
+    }
+    vpClearRows();
+    truncEl.textContent =
+      "oldest lines dropped, " + MAX_LOG_LINES + " kept in memory";
   }
 
   function reset() {
@@ -692,14 +746,6 @@ document.querySelectorAll("table").forEach(function (table, ti) {
       return;
     }
     closeStream();
-    if (restartTimer) {
-      clearTimeout(restartTimer);
-      restartTimer = null;
-    }
-    if (paused) {
-      setConn("Paused", "wait");
-      return;
-    }
     if (!followOn()) {
       setConn(totalLines ? "History loaded" : "Stopped", "done");
       return;
@@ -714,7 +760,7 @@ document.querySelectorAll("table").forEach(function (table, ti) {
       try {
         ES = new EventSource(streamURL(sinceVal));
         ES.onopen = function () {
-          setConn("Connected", "on");
+          setConn("Live", "on");
         };
         ES.onmessage = function (e) {
           var d;
@@ -776,8 +822,8 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     }
   }
 
-  function restartIfStreaming() {
-    if (!paused && !mask.hidden) {
+  function reloadHistory() {
+    if (!mask.hidden) {
       clearLog();
       loadHistory();
     }
@@ -794,6 +840,36 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     }
     return q.trim().split(/\s+/).filter(Boolean);
   }
+
+  var MAX_LOG_LINES = 500000;
+
+  var reKey = "",
+    reVal = null;
+  function compiledRe(q, mode, ins) {
+    if (!q) {
+      reKey = "\u0000none";
+      reVal = null;
+      return null;
+    }
+    var key = mode + "\u0000" + (ins ? "i" : "") + "\u0000" + q;
+    if (key === reKey) return reVal;
+    var terms = parseTerms(q, mode);
+    var re = null;
+    if (terms.length) {
+      if (mode === "regex") {
+        try {
+          re = new RegExp(terms[0], ins ? "i" : "");
+        } catch (_) {
+          re = null;
+        }
+      } else {
+        re = new RegExp(escRe(terms.join("|")), ins ? "i" : "");
+      }
+    }
+    reKey = key;
+    reVal = re;
+    return re;
+  }
   function isValidRegex(q) {
     try {
       new RegExp(q);
@@ -808,11 +884,10 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     if (!terms.length) return true;
     var hay = ins ? raw.toLowerCase() : raw;
     if (mode === "regex") {
-      try {
-        return new RegExp(terms[0], ins ? "i" : "").test(raw);
-      } catch (_) {
-        return hay.indexOf(terms[0].toLowerCase()) !== -1;
-      }
+      var re = compiledRe(q, mode, ins);
+      if (re) return re.test(raw);
+
+      return hay.indexOf(terms[0].toLowerCase()) !== -1;
     }
     var test = function (t) {
       var w = ins ? t.toLowerCase() : t;
@@ -822,44 +897,40 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     if (mode === "or") return terms.some(test);
     return terms.every(test);
   }
+  var hlKey = "",
+    hlVal = null;
   function highlightRe() {
     var q = filter.value,
       ins = insens.checked;
-    if (!q) return null;
+    if (!q) {
+      hlKey = "\u0000none";
+      hlVal = null;
+      return null;
+    }
     var mode = logMode();
-    var terms = parseTerms(q, mode);
-    if (!terms.length) return null;
-    var flags = "g" + (ins ? "i" : "");
-    if (mode === "regex") {
+    var key = mode + "\u0000" + (ins ? "i" : "") + "\u0000" + q;
+    if (key === hlKey) return hlVal;
+    var re = compiledRe(q, mode, ins);
+    var out = null;
+    if (re) {
+      var flags = re.flags.replace("g", "") + "g";
       try {
-        return new RegExp(terms[0], flags);
+        out = new RegExp(re.source, flags);
       } catch (_) {
-        return new RegExp(escRe(terms[0]), flags);
+        out = null;
       }
+    } else if (mode === "regex") {
+      var terms = parseTerms(q, mode);
+      if (terms.length)
+        try {
+          out = new RegExp(escRe(terms[0]), "g" + (ins ? "i" : ""));
+        } catch (_) {
+          out = null;
+        }
     }
-    if (mode === "text") return new RegExp(escRe(terms[0]), flags);
-    return new RegExp(terms.map(escRe).join("|"), flags);
-  }
-  function highlightFrag(text, re) {
-    var f = document.createDocumentFragment();
-    if (!re) {
-      f.appendChild(document.createTextNode(text));
-      return f;
-    }
-    var last = 0,
-      m;
-    while ((m = re.exec(text)) !== null) {
-      if (m.index > last)
-        f.appendChild(document.createTextNode(text.slice(last, m.index)));
-      var mark = document.createElement("mark");
-      mark.textContent = m[0];
-      f.appendChild(mark);
-      last = m.index + m[0].length;
-    }
-    if (last < text.length)
-      f.appendChild(document.createTextNode(text.slice(last)));
-    re.lastIndex = 0;
-    return f;
+    hlKey = key;
+    hlVal = out;
+    return out;
   }
   function renderMsg(el, raw) {
     el.textContent = "";
@@ -940,13 +1011,12 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     return lo;
   }
   function vpClearRows() {
-    var k;
-    for (k in vpEls) {
+    vpEls.forEach(function (rec) {
       try {
-        vpEls[k].el.remove();
+        rec.el.remove();
       } catch (_) {}
-    }
-    vpEls = {};
+    });
+    vpEls.clear();
   }
   function fmtTs(ts) {
     var ms = Date.parse(ts);
@@ -992,26 +1062,24 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     var lo = vpFirstAbove(st - over);
     var hi = vpFirstAbove(st + vh + over);
     var n = logs.length,
-      i,
-      k;
-    for (k in vpEls) {
-      var ki = +k;
+      i;
+    vpEls.forEach(function (rec, ki) {
       if (ki < lo || ki >= hi || !logs[ki] || !logs[ki].shown) {
         try {
-          vpEls[ki].el.remove();
+          rec.el.remove();
         } catch (_) {}
-        delete vpEls[k];
+        vpEls.delete(ki);
       }
-    }
+    });
     var remeasured = false;
     for (i = lo; i < hi && i < n; i++) {
       if (!logs[i].shown) continue;
-      var rec = vpEls[i];
+      var rec = vpEls.get(i);
       if (!rec) {
         var el = vpRow(i);
         logBody.insertBefore(el, botSp);
         rec = { el: el, top: -1 };
-        vpEls[i] = rec;
+        vpEls.set(i, rec);
       }
       if (rec.top !== csum[i]) {
         rec.top = csum[i];
@@ -1030,9 +1098,10 @@ document.querySelectorAll("table").forEach(function (table, ti) {
       rebuildCsum();
       for (i = lo; i < hi && i < n; i++) {
         if (!logs[i].shown) continue;
-        if (vpEls[i]) {
-          vpEls[i].top = csum[i];
-          vpEls[i].el.style.top = csum[i] + "px";
+        var r2 = vpEls.get(i);
+        if (r2) {
+          r2.top = csum[i];
+          r2.el.style.top = csum[i] + "px";
         }
       }
       topSp.style.height = csum[lo] + "px";
@@ -1118,10 +1187,6 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     tlErrPrev = null;
     if (tlBins) tlBins.innerHTML = "";
     tlBinEls = null;
-    if (tlBar) {
-      tlBar.style.setProperty("--tl0", 0);
-      tlBar.style.setProperty("--tl1", 1);
-    }
     if (tlStart) tlStart.textContent = "";
     if (tlEnd) tlEnd.textContent = "";
     if (tlTip) {
@@ -1142,8 +1207,6 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     tlLines++;
     tlTimes.push(ms);
     tlErrs.push(isErr ? 1 : 0);
-    tlBar.style.setProperty("--tl0", tlMin);
-    tlBar.style.setProperty("--tl1", tlMax + 1);
     tlStart.textContent = tlFmt(tlMin, tlMax - tlMin);
     tlEnd.textContent = tlFmt(tlMax, tlMax - tlMin);
     tlSchedule();
@@ -1241,6 +1304,17 @@ document.querySelectorAll("table").forEach(function (table, ti) {
   tlBar.addEventListener("mouseleave", function () {
     tlTip.classList.add("hidden");
   });
+
+  function vpLowerBound(t) {
+    var lo = 0,
+      hi = logs.length;
+    while (lo < hi) {
+      var mid = (lo + hi) >> 1;
+      if (logs[mid].tsMs < t) lo = mid + 1;
+      else hi = mid;
+    }
+    return lo;
+  }
   tlBar.addEventListener("click", function (ev) {
     var p = tlPos(ev);
     if (!p) return;
@@ -1249,26 +1323,32 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     if (b < 0) b = 0;
     else if (b >= NBINS) b = NBINS - 1;
     var tStart = tlMin + (b / NBINS) * span;
-    for (var i = 0; i < logs.length; i++) {
-      var it = logs[i];
-      if (it.shown && it.tsMs >= 0 && it.tsMs >= tStart) {
-        tlJump(i);
-        return;
-      }
+    var i = vpLowerBound(tStart);
+
+    var n = logs.length,
+      limit = Math.min(n, i + 64);
+    for (; i < limit; i++) {
+      if (logs[i].shown) break;
     }
+    if (i >= limit) {
+      i = vpLowerBound(tStart);
+    }
+    if (i >= n) i = n - 1;
+    if (i < 0) return;
+    tlJump(i);
   });
 
   var scrollTick = false;
   function followScrollBatch() {
-    if (paused || settling || !autoScrollOn()) return;
+    if (!autoScrollOn()) return;
     if (mask.hidden || scrollTick) return;
     scrollTick = true;
     raf(function () {
       scrollTick = false;
-      if (paused || settling || !autoScrollOn()) return;
+      if (!autoScrollOn()) return;
       if (mask.hidden) return;
       raf(function () {
-        if (paused || settling || !autoScrollOn()) return;
+        if (!autoScrollOn()) return;
         if (mask.hidden) return;
         if (
           !stickBottom &&
@@ -1281,7 +1361,15 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     });
   }
 
-  filter.addEventListener("input", applyLogFilter);
+  var filterTimer = null;
+  function applyLogFilterSoon() {
+    if (filterTimer) clearTimeout(filterTimer);
+    filterTimer = setTimeout(function () {
+      filterTimer = null;
+      applyLogFilter();
+    }, 120);
+  }
+  filter.addEventListener("input", applyLogFilterSoon);
   insens.addEventListener("change", applyLogFilter);
   ctxChk.addEventListener("change", applyLogFilter);
   document.querySelectorAll('input[name="logMode"]').forEach(function (r) {
@@ -1315,39 +1403,23 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     vpNeed();
   });
 
-  sinceSel.addEventListener("change", restartIfStreaming);
-  linesSel.addEventListener("change", restartIfStreaming);
-  outChk.addEventListener("change", restartIfStreaming);
-  errChk.addEventListener("change", restartIfStreaming);
+  sinceSel.addEventListener("change", reloadHistory);
+  linesSel.addEventListener("change", reloadHistory);
+  outChk.addEventListener("change", reloadHistory);
+  errChk.addEventListener("change", reloadHistory);
 
   followChk.addEventListener("click", function () {
     followChk.classList.toggle("on");
-    if (followOn()) {
-      restartIfStreaming();
-    } else {
+    if (!followOn()) {
       closeStream();
       setConn("Stopped", "off");
+      return;
     }
-  });
-
-  btnPause.addEventListener("click", function () {
-    if (paused) {
-      paused = false;
-      btnPause.textContent = "Pause";
-      btnPause.classList.remove("on");
-      if (lastTs) {
-        startStream();
-      } else {
-        clearLog();
-        loadHistory();
-      }
-    } else {
-      paused = true;
-      btnPause.textContent = "Resume";
-      btnPause.classList.add("on");
-      closeStream();
-      setConn("Paused", "wait");
+    if (lastTs && totalLines) {
+      startStream();
+      return;
     }
+    reloadHistory();
   });
 
   wrapChk.addEventListener("change", function () {
@@ -1365,7 +1437,7 @@ document.querySelectorAll("table").forEach(function (table, ti) {
 
   btnClearLogs.addEventListener("click", function () {
     clearLog();
-    if (followOn() && !paused) loadHistory();
+    loadHistory();
   });
 
   btnDownload.addEventListener("click", function () {
@@ -1388,24 +1460,87 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     URL.revokeObjectURL(a.href);
   });
 
+  var logKey = "docker-exporter-logs";
+  function persistLogs() {
+    try {
+      localStorage.setItem(
+        logKey,
+        JSON.stringify({
+          mode: logMode(),
+          ins: insens.checked,
+          ctx: ctxChk.checked,
+          out: outChk.checked,
+          err: errChk.checked,
+          auto: autoScrollOn(),
+          since: sinceSel.value,
+          lines: linesSel.value,
+        }),
+      );
+    } catch (_) {}
+  }
+  function restoreLogs() {
+    var raw;
+    try {
+      raw = localStorage.getItem(logKey);
+    } catch (_) {
+      return;
+    }
+    if (!raw) return;
+    var s;
+    try {
+      s = JSON.parse(raw);
+    } catch (_) {
+      return;
+    }
+    if (!s) return;
+    if (s.mode) {
+      var r = document.querySelector(
+        'input[name="logMode"][value="' + s.mode + '"]',
+      );
+      if (r) r.checked = true;
+    }
+    if (s.since) sinceSel.value = s.since;
+    if (s.lines) linesSel.value = s.lines;
+    if (typeof s.ins === "boolean") insens.checked = s.ins;
+    if (typeof s.ctx === "boolean") ctxChk.checked = s.ctx;
+    if (typeof s.out === "boolean") outChk.checked = s.out;
+    if (typeof s.err === "boolean") errChk.checked = s.err;
+    autoScroll.classList.toggle("on", !!s.auto);
+  }
+  var FOCUSABLE =
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  var lastFocus = null;
+  function focusables() {
+    return Array.prototype.filter.call(
+      mask.querySelectorAll(FOCUSABLE),
+      function (el) {
+        return el.offsetParent !== null;
+      },
+    );
+  }
   function open(id, name, compose) {
     cur = { id: id, name: name };
     title.textContent = compose && name ? compose + "/" + name : name;
+    lastFocus = document.activeElement;
     mask.hidden = false;
     document.body.style.overflow = "hidden";
-    paused = false;
-    btnPause.textContent = "Pause";
-    btnPause.classList.remove("on");
     stickBottom = true;
     reset();
+
+    var f = focusables();
+    if (f.length) f[0].focus();
     loadHistory();
   }
   function close() {
     closeStream();
+    persistLogs();
     cur = null;
     mask.hidden = true;
     document.body.style.overflow = "";
     reset();
+
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+    lastFocus = null;
   }
   $("logsClose").addEventListener("click", close);
   mask.addEventListener("click", function (e) {
@@ -1416,8 +1551,33 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     if (row) open(row.dataset.id, row.dataset.name, row.dataset.compose);
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !mask.hidden) close();
+    if (mask.hidden) return;
+    if (e.key === "Escape") {
+      close();
+      return;
+    }
+
+    if (e.key !== "Tab") return;
+    var f = focusables();
+    if (!f.length) return;
+    var first = f[0],
+      last = f[f.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   });
+  [filter, insens, ctxChk, outChk, errChk, sinceSel, linesSel].forEach(
+    function (el) {
+      el.addEventListener("change", persistLogs);
+    },
+  );
+  modeSeg.addEventListener("change", persistLogs);
+  autoScroll.addEventListener("click", persistLogs);
+  restoreLogs();
 
   vpSpacers();
 })();
@@ -1429,8 +1589,11 @@ document.querySelectorAll("table").forEach(function (table, ti) {
   document.addEventListener("mouseover", function (e) {
     var el = e.target.closest ? e.target.closest("[data-tip]") : null;
     if (!el) return;
+
+    var text = el.getAttribute("data-tip");
+    if (!text || !text.trim()) return;
     var r = el.getBoundingClientRect();
-    tip.textContent = el.getAttribute("data-tip");
+    tip.textContent = text;
     var x = r.left + r.width / 2;
     var half = tip.offsetWidth / 2;
     if (x - half < 8) x = half + 8;
@@ -1451,4 +1614,3 @@ document.querySelectorAll("table").forEach(function (table, ti) {
     tip.classList.remove("show");
   });
 })();
-
