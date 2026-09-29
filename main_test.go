@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -572,6 +573,66 @@ func TestRunDockerClientError(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("run did not exit on client error")
 	}
+}
+
+func TestGzipMiddleware(t *testing.T) {
+	payload := strings.Repeat("docker log line with repetitive content\n", 500)
+	handler := gzipMiddleware(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = io.WriteString(w, payload)
+	}))
+
+	t.Run("compresses when accepted", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+
+		if got := rec.Header().Get("Content-Encoding"); got != "gzip" {
+			t.Fatalf("Content-Encoding = %q, want gzip", got)
+		}
+		if !strings.Contains(rec.Header().Get("Vary"), "Accept-Encoding") {
+			t.Error("Vary must advertise Accept-Encoding")
+		}
+		zr, err := gzip.NewReader(rec.Body)
+		if err != nil {
+			t.Fatalf("gzip.NewReader: %v", err)
+		}
+		got, err := io.ReadAll(zr)
+		if err != nil {
+			t.Fatalf("read gzip body: %v", err)
+		}
+		if string(got) != payload {
+			t.Error("decompressed body does not match the original payload")
+		}
+		if rec.Body.Len() >= len(payload) {
+			t.Errorf("compressed body is %d bytes, expected smaller than %d", rec.Body.Len(), len(payload))
+		}
+	})
+
+	t.Run("stays plain without accept-encoding", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+		if got := rec.Header().Get("Content-Encoding"); got != "" {
+			t.Fatalf("Content-Encoding = %q, want empty", got)
+		}
+		if rec.Body.String() != payload {
+			t.Error("body must be sent uncompressed")
+		}
+	})
+
+	t.Run("never compresses the follow stream", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/api/containers/abc/logs?follow=1", nil)
+		req.Header.Set("Accept-Encoding", "gzip")
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		if got := rec.Header().Get("Content-Encoding"); got != "" {
+			t.Fatalf("SSE stream must not be compressed, got %q", got)
+		}
+		if rec.Body.String() != payload {
+			t.Error("SSE body must be sent uncompressed and complete")
+		}
+	})
 }
 
 func TestMainRunChild(t *testing.T) {

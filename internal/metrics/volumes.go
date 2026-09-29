@@ -48,8 +48,10 @@ func (m *Metrics) VolumesMetricsWorker(dockerClient *client.Client, logger *slog
 	if err != nil {
 		logger.Error("error getting volume list", "error", err)
 	}
+	m.dataMu.Lock()
 	m.volumeMetrics = volumeMetrics
-	volumeCount := len(m.volumeMetrics)
+	m.dataMu.Unlock()
+	volumeCount := len(volumeMetrics)
 	logger.Info(
 		"collecting volume metrics",
 		"source", "background worker",

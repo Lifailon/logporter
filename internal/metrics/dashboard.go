@@ -11,6 +11,9 @@ import (
 )
 
 func (m *Metrics) DashboardData() dashboard.Data {
+	m.dataMu.RLock()
+	defer m.dataMu.RUnlock()
+
 	running, stopped := 0, 0
 	var memoryUsed, imagesSize, volumesSize int64
 	for _, l := range m.Labels {
@@ -59,7 +62,7 @@ func (m *Metrics) DashboardData() dashboard.Data {
 		if l == nil {
 			continue
 		}
-		c := dashboard.Container{ID: id, Name: l.name, State: l.state, Status: cleanStatus(l.status), Compose: composeName(l), ComposeProject: l.composeProject, ComposeService: l.composeService}
+		c := dashboard.Container{ID: id, Name: l.name, State: l.state, Status: cleanStatus(l.status), ComposeProject: l.composeProject, ComposeService: l.composeService}
 		if bm := m.baseMetrics[id]; bm != nil {
 			c.CPU = cpuPercentString(m.cpuContainerPerc(id, bm.cpuTotal))
 			c.CPUTotal = humanDuration(bm.cpuTotal)
@@ -176,17 +179,6 @@ func cleanStatus(status string) string {
 		}
 	}
 	return status
-}
-
-func composeName(l *Labels) string {
-	switch {
-	case l.composeService != "" && l.composeProject != "":
-		return l.composeProject + "/" + l.composeService
-	case l.composeService != "":
-		return l.composeService
-	default:
-		return l.composeProject
-	}
 }
 
 func updateCount(metrics []imageUpdateMetrics) int {

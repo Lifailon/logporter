@@ -56,7 +56,6 @@ type Container struct {
 	Name           string
 	State          string
 	Status         string
-	Compose        string
 	ComposeProject string
 	ComposeService string
 	CPU            string

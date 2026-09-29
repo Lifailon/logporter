@@ -30,6 +30,7 @@ type Metrics struct {
 	volumeMetrics         []volumeMetric
 	volumeUsage           map[string][]string
 	imageUsage            map[string][]string
+	dataMu                sync.RWMutex
 	CustomLabelsKeys      []string
 	CacheData             []string
 	CacheTime             time.Time
@@ -398,6 +399,9 @@ func (m *Metrics) getInspectMetrics(ctx context.Context, dockerClient *client.Cl
 // Main function for getting metrics
 func (m *Metrics) GetMetrics(ctx context.Context, dockerClient *client.Client, hostname string, logger *slog.Logger) []string {
 	// Save previous CPU, NET and IO values ​​for the load calculation for the built-in Dashboard
+	m.dataMu.Lock()
+	defer m.dataMu.Unlock()
+
 	if len(m.baseMetrics) > 0 {
 		previous := make(map[string]previousMetrics, len(m.baseMetrics))
 		for id, bm := range m.baseMetrics {

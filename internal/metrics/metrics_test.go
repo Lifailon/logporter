@@ -119,22 +119,6 @@ func TestCleanStatus(t *testing.T) {
 	}
 }
 
-func TestComposeName(t *testing.T) {
-	cases := []struct {
-		l    *Labels
-		want string
-	}{
-		{&Labels{composeProject: "proj", composeService: "web"}, "proj/web"},
-		{&Labels{composeProject: "", composeService: "web"}, "web"},
-		{&Labels{composeProject: "proj", composeService: ""}, "proj"},
-	}
-	for _, c := range cases {
-		if got := composeName(c.l); got != c.want {
-			t.Errorf("composeName(%+v) = %q, want %q", c.l, got, c.want)
-		}
-	}
-}
-
 func TestUpdateCount(t *testing.T) {
 	if got := updateCount(nil); got != 0 {
 		t.Errorf("updateCount(nil) = %d, want 0", got)
@@ -1171,3 +1155,45 @@ func TestGetRemoteCreatedTimeRemoteUnreachable(t *testing.T) {
 }
 
 var healthyStr = "healthy"
+
+func TestDashboardDataConcurrent(t *testing.T) {
+	m := &Metrics{
+		Info:        &Info{Hostname: "host-01", numberCPU: 4},
+		Labels:      map[string]*Labels{"a": {name: "web", state: "running"}},
+		baseMetrics: map[string]*BaseMetrics{"a": {cpuTotal: 10}},
+		volumeUsage: map[string][]string{"pgdata": {"db"}},
+		imageUsage:  map[string][]string{"img1": {"web"}},
+	}
+
+	const rounds = 2000
+	var wg sync.WaitGroup
+
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for n := 0; n < rounds; n++ {
+				_ = m.DashboardData()
+			}
+		}()
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for n := 0; n < rounds; n++ {
+			m.dataMu.Lock()
+			m.volumeMetrics = []volumeMetric{{name: "pgdata", size: int64(n)}}
+			m.imageMetrics = []imageMetric{{id: "img1", name: "nginx", size: n}}
+			m.imageUpdateMetrics = []imageUpdateMetrics{{id: "img1"}}
+			m.volumeUsage["pgdata"] = []string{"db"}
+			m.imageUsage["img1"] = []string{"web"}
+			m.dataMu.Unlock()
+		}
+	}()
+
+	wg.Wait()
+	if len(m.DashboardData().Containers) == 0 {
+		t.Error("dashboard data must still expose the container")
+	}
+}

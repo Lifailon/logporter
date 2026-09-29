@@ -196,17 +196,27 @@ func (m *Metrics) ImageMetricsWorker(dockerClient *client.Client, logger *slog.L
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if len(m.imageMetrics) == 0 {
-		var err error
-		m.imageMetrics, err = m.getImagesMetrics(ctx, dockerClient)
+	// Image metrics are collected only once (dashboard is never blocked on it)
+	m.dataMu.RLock()
+	hasImages := len(m.imageMetrics) > 0
+	m.dataMu.RUnlock()
+	if !hasImages {
+		imageMetrics, err := m.getImagesMetrics(ctx, dockerClient)
 		if err != nil {
 			logger.Error("failed to get image metrics", "error", err)
+		} else {
+			m.dataMu.Lock()
+			m.imageMetrics = imageMetrics
+			m.dataMu.Unlock()
 		}
 	}
-	m.imageUpdateMetrics = m.getImagesUpdateMetrics(dockerClient, logger)
+	updates := m.getImagesUpdateMetrics(dockerClient, logger)
+	m.dataMu.Lock()
+	m.imageUpdateMetrics = updates
 	imageCount := len(m.imageMetrics)
+	m.dataMu.Unlock()
 	updateCount := 0
-	for _, image := range m.imageUpdateMetrics {
+	for _, image := range updates {
 		if image.updateStatus == 1 {
 			updateCount++
 		}

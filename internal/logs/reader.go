@@ -85,7 +85,7 @@ func ReadContainerLogs(ctx context.Context, dockerClient *client.Client, id stri
 		opts.Tail = 200
 	}
 	if opts.MaxBytes <= 0 {
-		opts.MaxBytes = 128 * 1024 * 1024
+		opts.MaxBytes = 512 * 1024 * 1024
 	}
 	options := container.LogsOptions{
 		ShowStdout: true,

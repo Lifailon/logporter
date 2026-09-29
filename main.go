@@ -1,6 +1,7 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,6 +22,57 @@ import (
 	"logporter/internal/logs"
 	"logporter/internal/metrics"
 )
+
+const (
+	// Maximum number of log lines that can be requested from a container at once
+	maxTailLines = 500000
+	// Read timeout for container log requests (non-streaming mode)
+	logsReadTimeout = 30 * time.Second
+)
+
+// Compresses large responses with gzip when the client supports it
+type gzipWriter struct {
+	http.ResponseWriter
+	gz          *gzip.Writer
+	wroteHeader bool
+}
+
+func (w *gzipWriter) WriteHeader(code int) {
+	if w.wroteHeader {
+		return
+	}
+	w.wroteHeader = true
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *gzipWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.gz.Write(b)
+}
+
+func gzipMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Vary", "Accept-Encoding")
+		// SSE (Server-Sent Events) must reach the browser line by line and uncompressed
+		if r.URL.Query().Get("follow") == "1" ||
+			!strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Content-Encoding", "gzip")
+		// BestSpeed keeps CPU usage low, which matters for an exporter
+		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		next.ServeHTTP(&gzipWriter{ResponseWriter: w, gz: gz}, r)
+		// Must be closed to flush the gzip footer, otherwise the client gets a truncated stream and fails to decompress it
+		_ = gz.Close()
+	})
+}
 
 // Logging http server requests
 func loggingMiddleware(m *metrics.Metrics, next http.Handler, logger *slog.Logger) http.Handler {
@@ -344,8 +396,8 @@ func run(stop <-chan os.Signal) int {
 		if v := q.Get("tail"); v != "" {
 			parsed, err := strconv.Atoi(v)
 			if err == nil && parsed > 0 {
-				if parsed > 100000 {
-					parsed = 100000
+				if parsed > maxTailLines {
+					parsed = maxTailLines
 				}
 				tail = parsed
 			}
@@ -371,7 +423,8 @@ func run(stop <-chan os.Signal) int {
 			return
 		}
 
-		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+		// Reading hundreds of thousands of lines needs more than the default
+		ctx, cancel := context.WithTimeout(r.Context(), logsReadTimeout)
 		defer cancel()
 		lines, truncated, err := logs.ReadContainerLogs(ctx, dockerClient, id, logs.ReadLogsOptions{
 			Tail:   tail,
@@ -415,7 +468,7 @@ func run(stop <-chan os.Signal) int {
 	// Start HTTP server
 	httpServer := &http.Server{
 		Addr:    host + ":" + port,
-		Handler: auth.Middleware(logSrv, logger),
+		Handler: gzipMiddleware(auth.Middleware(logSrv, logger)),
 	}
 	logger.Info("exporter started", "host", host, "port", port)
 	serverErr := make(chan error, 1)
