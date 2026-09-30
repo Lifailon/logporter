@@ -1,9 +1,17 @@
+x-common-settings: &common-settings
+  restart: always
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: 3
+
 services:
   logporter:
     image: lifailon/logporter:latest
     build: .
     container_name: logporter
-    restart: always
+    <<: *common-settings
     ports:
       - 9333:9333
     environment:
@@ -26,13 +34,17 @@ services:
       - LOKI_PUSH_SECONDS=5
       - LOKI_PUSH_LINES=1000
       - LOKI_BUFFER_LINES=10000
+      # Dashboard authentication (optional) and session lifetime in seconds
+      - DASHBOARD_USERNAME=admin
+      - DASHBOARD_PASSWORD=admin
+      - DASHBOARD_AUTH_TTL=0
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
-    restart: always
+    <<: *common-settings
     ports:
       - 3000:3000
     environment:
@@ -47,7 +59,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
-    restart: always
+    <<: *common-settings
     ports:
       - 9090:9090
     volumes:
@@ -58,7 +70,7 @@ services:
   loki:
     image: grafana/loki:latest
     container_name: loki
-    restart: always
+    <<: *common-settings
     ports:
       - 3100:3100
     volumes:

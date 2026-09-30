@@ -18,7 +18,9 @@
                 "DOCKER_METRICS_VOLUME_CACHE": "1",
                 "DOCKER_METRICS_IMAGE_UPDATE": "false",
                 "DOCKER_METRICS_IMAGE_INTERVAL": "1",
-                // "LOKI_URL": "http://192.168.3.101:3100"
+                "DASHBOARD_USERNAME": "admin",
+                "DASHBOARD_PASSWORD": "admin",
+                "DASHBOARD_AUTH_TTL": "0"
             },
             "preLaunchTask": "Start ssh tunnel to remote docker socket",
             "postDebugTask": "Stop ssh tunnel"
