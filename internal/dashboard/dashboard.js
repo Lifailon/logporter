@@ -641,7 +641,7 @@ function highlightFrag(text, re) {
       var hp = vpSlotH(pl);
       csum[m0 - 1] = (m0 >= 2 ? csum[m0 - 2] : 0) + hp;
     }
-    csum[m0] = csum[m0 - 1] + (it.shown ? vpSlotH(it) : 0);
+    csum[m0] = (m0 >= 1 ? csum[m0 - 1] : 0) + (it.shown ? vpSlotH(it) : 0);
     if (logs.length > MAX_LOG_LINES) {
       dropOldestLines();
     }
@@ -709,11 +709,22 @@ function highlightFrag(text, re) {
       cache: "no-store",
     })
       .then(function (r) {
-        return r.status === 400 || r.status === 404 ? null : r.json();
+        if (r.status === 400 || r.status === 404) return null;
+        if (!r.ok) {
+          return r.text().then(function (body) {
+            return { failed: true, text: body.trim() };
+          });
+        }
+        return r.json();
       })
       .then(function (d) {
         if (!d) {
           close();
+          return;
+        }
+        if (d.failed) {
+          truncEl.textContent = d.text;
+          startStream();
           return;
         }
         truncEl.textContent = d.truncated
@@ -724,8 +735,10 @@ function highlightFrag(text, re) {
         if (logBody.scrollTop) logBody.scrollTop = 0;
         startStream();
       })
-      .catch(function () {
-        startStream();
+      .catch(function (err) {
+        var msg = err && err.message ? err.message : String(err);
+        truncEl.textContent = "history failed: " + msg;
+        setConn("History failed", "off");
       });
   }
 
@@ -798,7 +811,9 @@ function highlightFrag(text, re) {
       cache: "no-store",
     })
       .then(function (r) {
-        return r.status === 400 || r.status === 404 ? null : r.json();
+        if (r.status === 400 || r.status === 404) return null;
+        if (!r.ok) return null;
+        return r.json();
       })
       .then(function (d) {
         if (!d) return;
@@ -1056,6 +1071,7 @@ function highlightFrag(text, re) {
       return;
     }
     vpSpacers();
+    if (!isFinite(csum[csum.length - 1])) rebuildCsum();
     var st = logBody.scrollTop || 0;
     var vh = logBody.clientHeight || 300;
     var over = 120;
