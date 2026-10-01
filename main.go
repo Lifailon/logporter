@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -23,11 +24,11 @@ import (
 	"logporter/internal/metrics"
 )
 
-const (
+var (
 	// Maximum number of log lines that can be requested from a container at once
 	maxTailLines = 500000
 	// Read timeout for container log requests (non-streaming mode)
-	logsReadTimeout = 30 * time.Second
+	logsReadTimeout = 15 * time.Second
 )
 
 // Compresses large responses with gzip when the client supports it
@@ -72,6 +73,28 @@ func gzipMiddleware(next http.Handler) http.Handler {
 		// Must be closed to flush the gzip footer, otherwise the client gets a truncated stream and fails to decompress it
 		_ = gz.Close()
 	})
+}
+
+// Builds the 504 body, keeping the wording in one place
+func logsTimeoutMessage(code int, d time.Duration, restartCmd string) string {
+	return fmt.Sprintf(
+		"Response error %d. Reading container logs took more than %d seconds. Try running the command: %s",
+		code, int(d/time.Second), restartCmd,
+	)
+}
+
+// Resolves the container name for the hint shown when a log read times out,
+// falling back to the ID so the suggested command stays usable
+func restartCommand(ctx context.Context, dockerClient *client.Client, id string) string {
+	name := id
+	inspectCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	if data, err := dockerClient.ContainerInspect(inspectCtx, id); err == nil {
+		if n := strings.TrimPrefix(data.Name, "/"); n != "" {
+			name = n
+		}
+	}
+	return "docker restart " + name
 }
 
 // Logging http server requests
@@ -437,7 +460,20 @@ func run(stop <-chan os.Signal) int {
 				_, _ = fmt.Fprintln(w, "container not found")
 				return
 			}
-			logger.Error("failed to read container logs", "container", id, "error", err)
+			logger.Error(
+				"failed to read container logs",
+				"container", id,
+				"error", err,
+				"stalled", errors.Is(err, logs.ErrLogStreamStalled),
+			)
+			if ctx.Err() == context.DeadlineExceeded {
+				w.WriteHeader(http.StatusGatewayTimeout)
+				_, _ = fmt.Fprint(
+					w,
+					logsTimeoutMessage(http.StatusGatewayTimeout, logsReadTimeout, restartCommand(r.Context(), dockerClient, id)),
+				)
+				return
+			}
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = fmt.Fprintln(w, "failed to read container logs")
 			return

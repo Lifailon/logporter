@@ -228,6 +228,30 @@ func fakeDockerDaemon(t *testing.T) (string, *atomic.Bool) {
 					w.WriteHeader(http.StatusNotFound)
 				case "beef":
 					w.WriteHeader(http.StatusInternalServerError)
+				case "f00d":
+					w.Header().Set("Content-Type", "application/vnd.docker.multiplexed-stream")
+					w.WriteHeader(http.StatusOK)
+					if f, ok := w.(http.Flusher); ok {
+						f.Flush()
+					}
+					select {
+					case <-r.Context().Done():
+					case <-time.After(5 * time.Second):
+					}
+				case "c0de":
+					_, _ = w.Write(daemonLogFrame(1, "2024-01-01T00:00:00.000000000Z early line\n"))
+					if f, ok := w.(http.Flusher); ok {
+						f.Flush()
+					}
+					select {
+					case <-r.Context().Done():
+					case <-time.After(5 * time.Second):
+					}
+				case "d00d":
+					select {
+					case <-r.Context().Done():
+					case <-time.After(5 * time.Second):
+					}
 				default:
 					w.WriteHeader(http.StatusNotFound)
 				}
@@ -482,6 +506,86 @@ func TestRunAuthNoTTL(t *testing.T) {
 	t.Setenv("LOG_LEVEL", "error")
 	stop, done := runStart(t)
 	waitServerReady(t, port)
+	close(stop)
+	if code := <-done; code != 0 {
+		t.Fatalf("run must exit 0 on graceful shutdown, got %d", code)
+	}
+}
+
+func TestLogsTimeoutMessage(t *testing.T) {
+	got := logsTimeoutMessage(http.StatusGatewayTimeout, 15*time.Second, "docker restart dockge")
+	want := "Response error 504. Reading container logs took more than 15 seconds. Try running the command: docker restart dockge"
+	if got != want {
+		t.Fatalf("message = %q, want %q", got, want)
+	}
+}
+
+func TestRunLogsReadTimeoutReturnsGatewayTimeout(t *testing.T) {
+	daemon, _ := fakeDockerDaemon(t)
+	t.Setenv("DOCKER_HOST", daemon)
+	t.Setenv("LOG_LEVEL", "error")
+
+	prevTimeout := logsReadTimeout
+	logsReadTimeout = 150 * time.Millisecond
+	t.Cleanup(func() { logsReadTimeout = prevTimeout })
+
+	port := freePort(t)
+	t.Setenv("DOCKER_METRICS_PORT", port)
+	stop, done := runStart(t)
+	waitServerReady(t, port)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/api/containers/f00d/logs?tail=10")
+	if err != nil {
+		t.Fatalf("slow logs request: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusGatewayTimeout {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusGatewayTimeout)
+	}
+	want := logsTimeoutMessage(http.StatusGatewayTimeout, logsReadTimeout, "docker restart f00d")
+	if got := strings.TrimSpace(string(body)); got != want {
+		t.Fatalf("body = %q, want %q", got, want)
+	}
+
+	close(stop)
+	if code := <-done; code != 0 {
+		t.Fatalf("run must exit 0 on graceful shutdown, got %d", code)
+	}
+}
+
+func TestRunLogsReadTimeoutReturnsNoPartialBody(t *testing.T) {
+	daemon, _ := fakeDockerDaemon(t)
+	t.Setenv("DOCKER_HOST", daemon)
+	t.Setenv("LOG_LEVEL", "error")
+
+	prevTimeout := logsReadTimeout
+	logsReadTimeout = 150 * time.Millisecond
+	t.Cleanup(func() { logsReadTimeout = prevTimeout })
+
+	port := freePort(t)
+	t.Setenv("DOCKER_METRICS_PORT", port)
+	stop, done := runStart(t)
+	waitServerReady(t, port)
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/api/containers/c0de/logs?tail=10")
+	if err != nil {
+		t.Fatalf("slow logs request: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusGatewayTimeout {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusGatewayTimeout)
+	}
+	if strings.Contains(string(body), "early line") {
+		t.Fatalf("a timed out read must not leak partial history: %q", string(body))
+	}
+	if !strings.Contains(string(body), "Response error 504") {
+		t.Fatalf("body = %q, want the gateway timeout explanation", string(body))
+	}
+
 	close(stop)
 	if code := <-done; code != 0 {
 		t.Fatalf("run must exit 0 on graceful shutdown, got %d", code)

@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -244,6 +245,113 @@ func TestReadContainerLogsSinceSet(t *testing.T) {
 	}
 }
 
+func TestParseLogFramesSplitsMultipleLinesInOneFrame(t *testing.T) {
+	var got []LogLine
+	err := parseLogFrames(bytes.NewReader(frameStdout("first\nsecond\nthird\n")),
+		func(stream string, ts time.Time, line string) error {
+			got = append(got, LogLine{stream, ts, line})
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{"first", "second", "third"}
+	if len(got) != len(want) {
+		t.Fatalf("expected %d lines, got %d (%+v)", len(want), len(got), got)
+	}
+	for i, w := range want {
+		if got[i].Line != w {
+			t.Fatalf("line %d = %q, want %q", i, got[i].Line, w)
+		}
+	}
+}
+
+func TestParseLogFramesFrameWithoutTrailingNewline(t *testing.T) {
+	var got []string
+	err := parseLogFrames(bytes.NewReader(frameStdout("only line")),
+		func(_ string, _ time.Time, line string) error {
+			got = append(got, line)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 1 || got[0] != "only line" {
+		t.Fatalf("got %#v, want [\"only line\"]", got)
+	}
+}
+
+func TestParseLogFramesStripsCarriageReturn(t *testing.T) {
+	var got []string
+	err := parseLogFrames(bytes.NewReader(frameStdout("win one\r\nwin two\r\n")),
+		func(_ string, _ time.Time, line string) error {
+			got = append(got, line)
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []string{"win one", "win two"}
+	if len(got) != len(want) {
+		t.Fatalf("got %#v, want %#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("line %d = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+func TestParseLogFramesEmptyFrameYieldsNoLines(t *testing.T) {
+	calls := 0
+	err := parseLogFrames(bytes.NewReader(frameStdout("")),
+		func(string, time.Time, string) error {
+			calls++
+			return nil
+		})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if calls != 0 {
+		t.Fatalf("callback called %d times, want 0", calls)
+	}
+}
+
+func TestReadContainerLogsSinceIsUnixSeconds(t *testing.T) {
+	var mu sync.Mutex
+	var since string
+	dc := fakeDockerClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		since = r.URL.Query().Get("since")
+		mu.Unlock()
+		w.Header().Set("Content-Type", "text/plain")
+		_, _ = w.Write(frameStdout("x"))
+	}))
+	sinceTime := time.Unix(1700000000, 0)
+	if _, _, err := ReadContainerLogs(context.Background(), dc, "abc", ReadLogsOptions{Since: sinceTime, Stream: "all"}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if since != "1700000000" {
+		t.Fatalf("since = %q, want %q", since, "1700000000")
+	}
+}
+
+func TestReadContainerLogsSplitsFrameLines(t *testing.T) {
+	dc := fakeDockerClient(t, logsHandler(frameStdout("2024-01-01T00:00:00.000000000Z a\nb\n")))
+	lines, _, err := ReadContainerLogs(context.Background(), dc, "abc", ReadLogsOptions{Stream: "all"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d (%+v)", len(lines), lines)
+	}
+	if lines[0].Line != "a" || lines[1].Line != "b" {
+		t.Fatalf("lines = %q / %q, want a / b", lines[0].Line, lines[1].Line)
+	}
+}
+
 func TestReadContainerLogsTruncation(t *testing.T) {
 	stopLine := frameStdout("hello world")
 	dc := fakeDockerClient(t, logsHandler(append(stopLine, frameStderr("another line")...)))
@@ -406,11 +514,34 @@ func TestStreamSSEPassesSinceToDocker(t *testing.T) {
 		}
 	}))
 	rec := httptest.NewRecorder()
-	StreamSSE(context.Background(), rec, dc, "abc", ReadLogsOptions{Tail: 10, Stream: "all", Since: time.Now().Add(-time.Hour)})
+	sinceTime := time.Now().Add(-time.Hour)
+	StreamSSE(context.Background(), rec, dc, "abc", ReadLogsOptions{Tail: 10, Stream: "all", Since: sinceTime})
 	mu.Lock()
 	defer mu.Unlock()
-	if since == "" {
-		t.Fatal("since must be sent to the Docker API when provided")
+	if want := strconv.FormatInt(sinceTime.UTC().Unix(), 10); since != want {
+		t.Fatalf("since = %q, want unix seconds %q", since, want)
+	}
+}
+
+func TestStreamSSEAsksForNoHistoryViaTail(t *testing.T) {
+	var mu sync.Mutex
+	var tail string
+	dc := fakeDockerClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.Path, "/logs"):
+			tail = r.URL.Query().Get("tail")
+			w.Header().Set("Content-Type", "text/plain")
+			_, _ = w.Write(frameStdout("x"))
+		case strings.Contains(r.URL.Path, "/json"):
+			_, _ = io.WriteString(w, `{"State":{"Status":"exited","Running":false}}`)
+		}
+	}))
+	rec := httptest.NewRecorder()
+	StreamSSE(context.Background(), rec, dc, "abc", ReadLogsOptions{Tail: 200, Stream: "all", Since: time.Now()})
+	mu.Lock()
+	defer mu.Unlock()
+	if tail != "0" {
+		t.Fatalf("tail = %q, want 0 because since already bounds the stream", tail)
 	}
 }
 

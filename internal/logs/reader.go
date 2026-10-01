@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"time"
@@ -17,6 +18,8 @@ import (
 const maxFrameSize = 4 * 1024 * 1024
 
 var errStop = errors.New("stop frame parsing")
+
+var ErrLogStreamStalled = errors.New("docker stalled while sending the log stream")
 
 type LogLine struct {
 	Stream    string
@@ -66,16 +69,25 @@ func parseLogFrames(r io.Reader, fn func(stream string, ts time.Time, line strin
 		}
 
 		timestamp := time.Now()
-		line := string(content)
-		if i := bytes.IndexByte(content, ' '); i > 0 {
-			if t, err := time.Parse(time.RFC3339Nano, string(content[:i])); err == nil {
+		payload := content
+		if i := bytes.IndexByte(payload, ' '); i > 0 {
+			if t, err := time.Parse(time.RFC3339Nano, string(payload[:i])); err == nil {
 				timestamp = t
-				line = string(content[i+1:])
+				payload = payload[i+1:]
 			}
 		}
-
-		if err := fn(stream, timestamp, line); err != nil {
-			return err
+		parts := bytes.Split(payload, []byte("\n"))
+		for i, part := range parts {
+			if i == len(parts)-1 && len(part) == 0 {
+				break
+			}
+			line := part
+			if n := len(line); n > 0 && line[n-1] == '\r' {
+				line = line[:n-1]
+			}
+			if err := fn(stream, timestamp, string(line)); err != nil {
+				return err
+			}
 		}
 	}
 }
@@ -94,7 +106,7 @@ func ReadContainerLogs(ctx context.Context, dockerClient *client.Client, id stri
 		Tail:       strconv.Itoa(opts.Tail),
 	}
 	if !opts.Since.IsZero() {
-		options.Since = opts.Since.UTC().Format(time.RFC3339Nano)
+		options.Since = strconv.FormatInt(opts.Since.UTC().Unix(), 10)
 	}
 	reader, err := dockerClient.ContainerLogs(ctx, id, options)
 	if err != nil {
@@ -118,7 +130,10 @@ func ReadContainerLogs(ctx context.Context, dockerClient *client.Client, id stri
 		return nil
 	})
 	if err != nil && !errors.Is(err, errStop) {
-		return nil, truncated, err
+		if ctx.Err() != nil {
+			return lines, truncated, fmt.Errorf("%w: %w", ErrLogStreamStalled, err)
+		}
+		return lines, truncated, err
 	}
 	return lines, truncated, nil
 }

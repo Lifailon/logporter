@@ -60,10 +60,10 @@ func StreamSSE(ctx context.Context, w http.ResponseWriter, dockerClient *client.
 			ShowStderr: true,
 			Timestamps: true,
 			Follow:     true,
-			Tail:       strconv.Itoa(opts.Tail),
+			Tail:       "0",
 		}
 		if !lastTimestamp.IsZero() {
-			options.Since = lastTimestamp.UTC().Format(time.RFC3339Nano)
+			options.Since = strconv.FormatInt(lastTimestamp.UTC().Unix(), 10)
 		}
 
 		stream, err := dockerClient.ContainerLogs(ctx, id, options)
