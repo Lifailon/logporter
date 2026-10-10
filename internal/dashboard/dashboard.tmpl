@@ -440,6 +440,7 @@
         --warn: #fbbf24;
         --red: #f87171;
         --teal: #2dd4bf;
+        --violet: #c084fc;
         --mono:
           ui-monospace, "Cascadia Code", "JetBrains Mono", Menlo, Consolas,
           "Courier New", monospace;
@@ -459,6 +460,7 @@
         --warn: #b06a00;
         --red: #c9372c;
         --teal: #0f9d8f;
+        --violet: #7c3aed;
       }
       :root[data-theme="light"] #logsModal .sw .trk::after {
         background: #ffffff;
@@ -785,6 +787,25 @@
       }
       #logsModal .log-body.no-stream .lb-stream {
         display: none;
+      }
+      #logsModal .log-body .hl-error {
+        color: var(--red);
+      }
+      #logsModal .log-body .hl-warn {
+        color: var(--warn);
+      }
+      #logsModal .log-body .hl-ok {
+        color: var(--ok);
+      }
+      #logsModal .log-body .hl-time {
+        color: var(--violet);
+      }
+      #logsModal .log-body .hl-num {
+        color: var(--sky);
+      }
+      #logsModal .log-body .hl-link {
+        color: var(--accent);
+        text-decoration: none;
       }
       #logsModal .log-body .vspacer {
         position: relative;
@@ -1300,6 +1321,12 @@
                   class="trk"
                 ></span
                 >Word-wrap</label
+              >
+              <label class="sw" title="Highlight success, warnings, errors, numbers and time"
+                ><input type="checkbox" id="colorChk" checked /><span
+                  class="trk"
+                ></span
+                >Highlight</label
               >
             </div>
             <div class="mt-row" id="toolsModes">

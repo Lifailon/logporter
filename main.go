@@ -201,9 +201,8 @@ func run(stop <-chan os.Signal) int {
 
 	var hostname string
 	var port string
-	var host string
 
-	host = os.Getenv("DOCKER_METRICS_HOST")
+	host := os.Getenv("DOCKER_METRICS_HOST")
 
 	port = "9333"
 	envPort := os.Getenv("DOCKER_METRICS_PORT")

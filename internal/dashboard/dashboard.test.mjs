@@ -149,6 +149,9 @@ const {
   cmpCell,
   escRe,
   highlightFrag,
+  colorSpans,
+  colorFrag,
+  HL,
   MAX_MARKS,
   MAX_HIGHLIGHT_LEN,
 } = sandbox;
@@ -402,4 +405,239 @@ test("pollTick ignores a 504 instead of reporting a poll error", () => {
     /if \(!r\.ok\) return null;/,
     "a gateway timeout must not break the polling loop",
   );
+});
+
+function picks(text) {
+  const s = colorSpans(text);
+  if (!s) return [];
+  const out = [];
+  for (let i = 0; i < s.length; i += 3)
+    out.push([text.slice(s[i], s[i + 1]), s[i + 2]]);
+  return out;
+}
+
+test("colorSpans returns null for an empty line", () => {
+  assert.equal(colorSpans(""), null);
+});
+
+test("colorSpans returns null past the highlight limit", () => {
+  const at = "error " + "x".repeat(MAX_HIGHLIGHT_LEN - 6);
+  assert.deepEqual(picks(at), [["error", "hl-error"]]);
+  assert.equal(colorSpans(at + "x"), null);
+});
+
+test("colorSpans marks error warn and ok words", () => {
+  assert.deepEqual(picks("fatal error connection failed warn retry done"), [
+    ["fatal", "hl-error"],
+    ["error", "hl-error"],
+    ["connection", "hl-ok"],
+    ["failed", "hl-error"],
+    ["warn", "hl-warn"],
+    ["retry", "hl-warn"],
+    ["done", "hl-ok"],
+  ]);
+});
+
+test("colorSpans respects word boundaries", () => {
+  assert.deepEqual(picks("unblocked unavailable available password"), [
+    ["unblocked", "hl-ok"],
+    ["unavailable", "hl-error"],
+    ["available", "hl-ok"],
+  ]);
+});
+
+test("colorSpans matches keywords and units in any case", () => {
+  assert.deepEqual(picks("ERROR WARN OK Failed 512MIB V8.14.6"), [
+    ["ERROR", "hl-error"],
+    ["WARN", "hl-warn"],
+    ["OK", "hl-ok"],
+    ["Failed", "hl-error"],
+    ["512MIB", "hl-num"],
+    ["V8.14.6", "hl-num"],
+  ]);
+});
+
+test("colorSpans marks a full ISO timestamp", () => {
+  const ts = "2025-02-26T21:38:35.956968+03:00";
+  assert.deepEqual(picks(ts), [[ts, "hl-time"]]);
+});
+
+test("colorSpans marks date formats", () => {
+  for (const d of [
+    "2025-02-26",
+    "2025/02/26",
+    "2025.02.26",
+    "26-02-2025",
+    "26.02.2025",
+    "26/02/2025",
+  ]) {
+    assert.deepEqual(picks(d), [[d, "hl-time"]], d);
+  }
+});
+
+test("colorSpans marks clock times", () => {
+  for (const t of ["21:38", "21:38:35", "21:38:35.956+03:00"]) {
+    assert.deepEqual(picks(t), [[t, "hl-time"]], t);
+  }
+});
+
+test("colorSpans marks mac addresses", () => {
+  for (const m of ["11:11:11:11:11:11", "aa-bb-cc-dd-ee-ff"]) {
+    assert.deepEqual(picks(m), [[m, "hl-time"]], m);
+  }
+});
+
+test("colorSpans marks ip addresses", () => {
+  assert.deepEqual(picks("255.255.255.255/24"), [
+    ["255.255.255.255/24", "hl-time"],
+  ]);
+  assert.deepEqual(picks("127.0.0.1:8443"), [
+    ["127.0.0.1", "hl-time"],
+    ["8443", "hl-num"],
+  ]);
+});
+
+test("colorSpans marks numbers decimals and versions", () => {
+  assert.deepEqual(picks("1 1.1 1.1.1 2.10.14 v8.14.6"), [
+    ["1", "hl-num"],
+    ["1.1", "hl-num"],
+    ["1.1.1", "hl-num"],
+    ["2.10.14", "hl-num"],
+    ["v8.14.6", "hl-num"],
+  ]);
+});
+
+test("colorSpans marks number units", () => {
+  assert.deepEqual(picks("300ms 512MiB 50% 5s"), [
+    ["300ms", "hl-num"],
+    ["512MiB", "hl-num"],
+    ["50%", "hl-num"],
+    ["5s", "hl-num"],
+  ]);
+});
+
+test("colorSpans ignores numbers inside hyphenated identifiers", () => {
+  assert.equal(colorSpans("k3d-rpi-105-serverlb"), null);
+});
+
+test("colorSpans marks a url as a single link span", () => {
+  assert.deepEqual(picks("see https://example.com/api/v1?x=1 now"), [
+    ["https://example.com/api/v1?x=1", "hl-link"],
+  ]);
+});
+
+test("colorSpans keeps a url whole instead of splitting it", () => {
+  assert.deepEqual(picks("http://10.0.0.1:8443/api/v2 www.x.io"), [
+    ["http://10.0.0.1:8443/api/v2", "hl-link"],
+    ["www.x.io", "hl-link"],
+  ]);
+});
+
+test("colorSpans trims trailing punctuation from a url", () => {
+  assert.deepEqual(picks("go http://example.com, stop"), [
+    ["http://example.com", "hl-link"],
+    ["stop", "hl-error"],
+  ]);
+});
+
+test("colorSpans matches links in any case", () => {
+  assert.deepEqual(picks("HTTPS://EXAMPLE.COM/A"), [
+    ["HTTPS://EXAMPLE.COM/A", "hl-link"],
+  ]);
+});
+
+test("colorSpans keeps spans sorted and non overlapping", () => {
+  const text = "fatal2025-02-26 1.5ms warn 10.0.0.1 done";
+  const s = colorSpans(text);
+  assert.ok(s && s.length);
+  let prev = 0;
+  for (let i = 0; i < s.length; i += 3) {
+    assert.ok(s[i] >= prev, "spans must not overlap");
+    assert.ok(s[i] < s[i + 1], "a span must be non empty");
+    prev = s[i + 1];
+  }
+});
+
+test("every color class has a stylesheet rule", () => {
+  const tmpl = readFileSync(
+    fileURLToPath(new URL("./dashboard.tmpl", import.meta.url)),
+    "utf8",
+  );
+  for (const g of HL) assert.ok(tmpl.includes("." + g.cls), g.cls);
+});
+
+function flat(node, out = []) {
+  for (const c of node.children) {
+    if (c.tagName === "FRAGMENT") flat(c, out);
+    else out.push(c);
+  }
+  return out;
+}
+
+function plain(node) {
+  if (!node.children || !node.children.length) return node.textContent;
+  return flat(node).map(plain).join("");
+}
+
+function nodes(line, on, re) {
+  return flat(colorFrag(line, re || null, on)).map((c) => [
+    plain(c),
+    c.nodeType === 3 ? null : c.className,
+  ]);
+}
+
+test("colorFrag wraps every color span and keeps the plain text", () => {
+  assert.deepEqual(nodes("fatal 1.5ms warn", true), [
+    ["fatal", "hl-error"],
+    [" ", null],
+    ["1.5ms", "hl-num"],
+    [" ", null],
+    ["warn", "hl-warn"],
+  ]);
+});
+
+test("colorFrag leaves the line untouched when coloring is off", () => {
+  assert.deepEqual(nodes("fatal done", false), [["fatal done", null]]);
+});
+
+test("colorFrag nests search marks inside color spans", () => {
+  const f = flat(colorFrag("fatal", /fat/g, true));
+  assert.equal(f.length, 1);
+  assert.equal(f[0].className, "hl-error");
+  const inner = flat(f[0]);
+  assert.equal(inner[0].tagName, "MARK");
+  assert.equal(inner[0].textContent, "fat");
+  assert.equal(inner[1].textContent, "al");
+});
+
+test("colorFrag renders links as clickable anchors", () => {
+  const [link] = flat(colorFrag("http://example.com", null, true));
+  assert.equal(link.tagName, "A");
+  assert.equal(link.className, "hl-link");
+  assert.equal(link.href, "http://example.com");
+  assert.equal(link.target, "_blank");
+  assert.equal(link.rel, "noopener");
+  const [www] = flat(colorFrag("www.example.com", null, true));
+  assert.equal(www.tagName, "A");
+  assert.equal(www.href, "https://www.example.com");
+});
+
+test("colorFrag renders links alongside other color spans", () => {
+  assert.deepEqual(nodes("fatal https://x.io/v1 300ms", true), [
+    ["fatal", "hl-error"],
+    [" ", null],
+    ["https://x.io/v1", "hl-link"],
+    [" ", null],
+    ["300ms", "hl-num"],
+  ]);
+});
+
+test("renderMsg renders through colorFrag", () => {
+  const start = source.indexOf("function renderMsg");
+  assert.ok(start > -1, "renderMsg not found");
+  const body = source.slice(
+    start,
+    source.indexOf("function applyLogFilter", start),
+  );
+  assert.match(body, /colorFrag\(raw, highlightRe\(\), colorChk\.checked\)/);
 });

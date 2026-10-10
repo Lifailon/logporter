@@ -395,6 +395,206 @@ function highlightFrag(text, re) {
   return f;
 }
 
+var HL_PREV = /[-\w.]/;
+var HL_TIME =
+  "\\d{4}-\\d{2}-\\d{2}[Tt ]\\d{1,2}:\\d{2}(?::\\d{2})?(?:[.,]\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})?" +
+  "|[0-9A-Fa-f]{2}(?:[:-][0-9A-Fa-f]{2}){5}" +
+  "|\\d{4}[-/.]\\d{1,2}[-/.]\\d{1,2}" +
+  "|\\d{1,2}:\\d{2}(?::\\d{2})?(?:[.,]\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})?" +
+  "|(?:\\d{1,3}\\.){3}\\d{1,3}(?:/\\d{1,2})?" +
+  "|\\d{2}[-/.]\\d{1,2}[-/.]\\d{4}";
+var HL_NUM =
+  "v?\\d+(?:\\.\\d+)*(?:[KMGTP]i?B|ms|ns|min|B|%|[smh])?(?![\\w.])";
+var HL_LINK =
+  "(?:https?|ftp)://[^\\s\"'<>]*[^\\s\"'<>.,;:!?\\)}]" +
+  "|\\bwww\\.[^\\s\"'<>]*[^\\s\"'<>.,;:!?\\)}]";
+var HL = [
+  {
+    cls: "hl-error",
+    guard: 0,
+    words: [
+      "erro*",
+      "disconnect*",
+      "disabl*",
+      "crash*",
+      "delet*",
+      "remov*",
+      "stop*",
+      "invalid*",
+      "abort*",
+      "block*",
+      "inactiv*",
+      "deactiv*",
+      "exit*",
+      "crit*",
+      "fail*",
+      "fatal*",
+      "close*",
+      "drop*",
+      "panic*",
+      "emerg*",
+      "reject*",
+      "refus*",
+      "deny*",
+      "denied",
+      "unavailabl*",
+      "unsuccess*",
+      "unauthoriz*",
+      "forbid*",
+      "conflict*",
+      "severe*",
+      "unhealth*",
+      "throttl*",
+      "unstabl*",
+      "degraded*",
+      "false",
+      "null",
+      "nil",
+      "none",
+      "dead",
+    ],
+  },
+  {
+    cls: "hl-warn",
+    guard: 0,
+    words: [
+      "warn*",
+      "restart*",
+      "reconnect*",
+      "retry*",
+      "expir*",
+      "latenc*",
+      "unknown",
+      "return*",
+      "skip*",
+      "missed*",
+      "paus*",
+    ],
+  },
+  {
+    cls: "hl-ok",
+    guard: 0,
+    words: [
+      "unblock*",
+      "success*",
+      "complete*",
+      "accept*",
+      "connect*",
+      "finish*",
+      "start*",
+      "enable*",
+      "allow*",
+      "passed",
+      "passing",
+      "ready",
+      "available",
+      "running",
+      "installed",
+      "true",
+      "done",
+      "ok",
+      "login",
+      "regist*",
+      "auth*",
+      "listen*",
+      "open*",
+      "create*",
+      "updat*",
+      "upgrad*",
+    ],
+  },
+  { cls: "hl-time", guard: 1, re: HL_TIME },
+  { cls: "hl-num", guard: 1, re: HL_NUM },
+  { cls: "hl-link", guard: 0, re: HL_LINK },
+];
+var HL_RE = (function () {
+  var parts = [],
+    pre,
+    exc,
+    one,
+    i,
+    j,
+    w;
+  for (i = 0; i < HL.length; i++) {
+    if (HL[i].re) {
+      parts.push(HL[i].re);
+      continue;
+    }
+    pre = [];
+    exc = [];
+    for (j = 0; j < HL[i].words.length; j++) {
+      w = HL[i].words[j];
+      if (w.slice(-1) === "*") pre.push(escRe(w.slice(0, -1)));
+      else exc.push(escRe(w));
+    }
+    one = [];
+    if (pre.length) one.push("\\b(?:" + pre.join("|") + ")\\w*\\b");
+    if (exc.length) one.push("\\b(?:" + exc.join("|") + ")\\b");
+    parts.push(one.join("|"));
+  }
+  try {
+    return new RegExp("(" + parts.join(")|(") + ")", "gi");
+  } catch (_) {
+    return null;
+  }
+})();
+function colorSpans(text) {
+  var R = HL_RE;
+  if (!R || text.length > MAX_HIGHLIGHT_LEN) return null;
+  var G = HL,
+    P = HL_PREV,
+    n = G.length,
+    out = [],
+    m,
+    gi,
+    i;
+  R.lastIndex = 0;
+  while ((m = R.exec(text)) !== null) {
+    if (!m[0]) {
+      R.lastIndex++;
+      continue;
+    }
+    gi = -1;
+    for (i = 1; i <= n; i++) {
+      if (m[i]) {
+        gi = i - 1;
+        break;
+      }
+    }
+    if (gi < 0) continue;
+    if (G[gi].guard && m.index > 0 && P.test(text.charAt(m.index - 1)))
+      continue;
+    out.push(m.index, m.index + m[0].length, G[gi].cls);
+  }
+  return out.length ? out : null;
+}
+function colorFrag(text, re, on) {
+  var sp = on ? colorSpans(text) : null;
+  if (!sp) return highlightFrag(text, re);
+  var f = document.createDocumentFragment(),
+    H = highlightFrag,
+    last = 0,
+    i = 0;
+  while (i < sp.length) {
+    if (sp[i] > last) f.appendChild(H(text.slice(last, sp[i]), re));
+    var cls = sp[i + 2],
+      txt = text.slice(sp[i], sp[i + 1]),
+      s = document.createElement(cls === "hl-link" ? "a" : "span");
+    s.className = cls;
+    if (cls === "hl-link") {
+      s.href = /^www\./i.test(txt) ? "https://" + txt : txt;
+      s.target = "_blank";
+      s.rel = "noopener";
+    }
+    s.appendChild(H(txt, re));
+    f.appendChild(s);
+    last = sp[i + 1];
+    i += 3;
+  }
+  if (last < text.length) f.appendChild(H(text.slice(last), re));
+  return f;
+}
+
 (function () {
   var key = "docker-exporter-refresh";
   var pausedKey = "docker-exporter-paused";
@@ -506,6 +706,7 @@ function highlightFrag(text, re) {
     wrapChk = $("wrapChk"),
     tsChk = $("tsChk"),
     streamChk = $("streamChk"),
+    colorChk = $("colorChk"),
     outChk = $("outChk"),
     errChk = $("errChk"),
     followChk = $("followChk"),
@@ -949,7 +1150,7 @@ function highlightFrag(text, re) {
   }
   function renderMsg(el, raw) {
     el.textContent = "";
-    el.appendChild(highlightFrag(raw, highlightRe()));
+    el.appendChild(colorFrag(raw, highlightRe(), colorChk.checked));
   }
 
   function applyLogFilter() {
@@ -1450,6 +1651,10 @@ function highlightFrag(text, re) {
     logBody.classList.toggle("no-stream", !streamChk.checked);
     vpRefluid();
   });
+  colorChk.addEventListener("change", function () {
+    vpClearRows();
+    vpNeed();
+  });
 
   btnClearLogs.addEventListener("click", function () {
     clearLog();
@@ -1487,6 +1692,7 @@ function highlightFrag(text, re) {
           ctx: ctxChk.checked,
           out: outChk.checked,
           err: errChk.checked,
+          col: colorChk.checked,
           auto: autoScrollOn(),
           since: sinceSel.value,
           lines: linesSel.value,
@@ -1521,6 +1727,7 @@ function highlightFrag(text, re) {
     if (typeof s.ctx === "boolean") ctxChk.checked = s.ctx;
     if (typeof s.out === "boolean") outChk.checked = s.out;
     if (typeof s.err === "boolean") errChk.checked = s.err;
+    if (typeof s.col === "boolean") colorChk.checked = s.col;
     autoScroll.classList.toggle("on", !!s.auto);
   }
   var FOCUSABLE =
@@ -1586,7 +1793,7 @@ function highlightFrag(text, re) {
       first.focus();
     }
   });
-  [filter, insens, ctxChk, outChk, errChk, sinceSel, linesSel].forEach(
+  [filter, insens, ctxChk, outChk, errChk, colorChk, sinceSel, linesSel].forEach(
     function (el) {
       el.addEventListener("change", persistLogs);
     },
