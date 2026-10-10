@@ -376,34 +376,81 @@
         padding: 20px;
         text-align: center;
       }
+      .collapse-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-weight: 600;
+      }
+      .collapse-btn .ico {
+        width: 14px;
+        height: 14px;
+        transition: transform 0.18s ease;
+      }
+      .collapse-btn.collapsed .ico {
+        transform: rotate(180deg);
+      }
       tr.group-row {
         cursor: pointer;
         user-select: none;
+        outline: none;
+      }
+      tr.group-row:focus-visible td {
+        box-shadow: inset 0 0 0 2px var(--accent);
       }
       tr.group-row td {
         background: var(--thead);
-        padding: 5px 12px;
+        padding: 6px 12px;
         border-bottom: 1px solid var(--border);
-        color: var(--blue);
+        color: var(--muted);
         font-size: 12px;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
       }
       tr.group-row:hover td {
-        background: var(--thead);
+        background: var(--row-hover);
+      }
+      tr.group-row .group-name {
+        color: var(--text);
       }
       tr.group-row td:first-child::before {
-        content: "▾ ";
-        opacity: 0.7;
+        content: "";
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin-right: 9px;
+        vertical-align: middle;
+        border-right: 2px solid var(--muted);
+        border-bottom: 2px solid var(--muted);
+        transform: rotate(45deg);
+        transition:
+          transform 0.18s ease,
+          border-color 0.18s ease;
       }
       tr.group-row.collapsed td:first-child::before {
-        content: "▸ ";
+        transform: rotate(-45deg);
+      }
+      tr.group-row:hover td:first-child::before {
+        border-color: var(--text);
       }
       tr.group-row .group-count {
-        color: var(--muted);
-        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
         margin-left: 8px;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      tr.group-row .group-count.ok {
+        background: rgba(46, 204, 113, 0.15);
+        color: var(--green);
+      }
+      tr.group-row .group-count.bad {
+        background: rgba(231, 76, 60, 0.15);
+        color: var(--red);
       }
       tr.group-row .group-label {
         color: var(--muted);
@@ -1127,11 +1174,21 @@
           />
           <button
             id="collapseAllBtn"
-            class="theme-btn"
+            class="theme-btn collapse-btn"
             type="button"
             title="Collapse all stacks"
+            aria-expanded="true"
           >
-            ➖ Collapse
+            <svg class="ico" viewBox="0 0 16 16" aria-hidden="true">
+              <path
+                d="M4 6l4-4 4 4M4 11l4-4 4 4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+            ><span class="lbl">Collapse all</span>
           </button>
         </div>
         <table>
@@ -1322,7 +1379,9 @@
                 ></span
                 >Word-wrap</label
               >
-              <label class="sw" title="Highlight success, warnings, errors, numbers and time"
+              <label
+                class="sw"
+                title="Highlight success, warnings, errors, numbers and time"
                 ><input type="checkbox" id="colorChk" checked /><span
                   class="trk"
                 ></span
@@ -1473,12 +1532,21 @@
   </div>
 </div>
 {{end}} {{define "rowsContainers"}} {{range .ContainerGroups}}
-<tr class="group-row" data-group="{{.Name}}">
+<tr
+  class="group-row"
+  data-group="{{.Name}}"
+  tabindex="0"
+  role="button"
+  aria-expanded="true"
+>
   <td colspan="14">
-    {{if .Name}}<span>{{.Name}}</span>{{else}}<span class="group-label"
+    {{if .Name}}<span class="group-name">{{.Name}}</span>{{else}}<span
+      class="group-label"
       >Standalone</span
     >{{end}}
-    <span class="group-count">{{len .Containers}}</span>
+    <span class="group-count ok">{{.RunningCount}}</span>
+    {{if .StoppedCount}}<span class="group-count bad">{{.StoppedCount}}</span
+    >{{end}}
   </td>
 </tr>
 {{range .Containers}}

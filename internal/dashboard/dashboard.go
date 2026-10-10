@@ -95,6 +95,20 @@ func (d Container) StateClass() string {
 	}
 }
 
+func (g ContainerGroup) RunningCount() int {
+	n := 0
+	for _, c := range g.Containers {
+		if c.State == "running" {
+			n++
+		}
+	}
+	return n
+}
+
+func (g ContainerGroup) StoppedCount() int {
+	return len(g.Containers) - g.RunningCount()
+}
+
 func (d Container) ShortID() string {
 	if len(d.ID) > 12 {
 		return d.ID[:12] + "…"

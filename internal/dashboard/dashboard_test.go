@@ -121,10 +121,13 @@ func TestRefreshFragments(t *testing.T) {
 	}
 
 	rows := string(frags["containers"])
-	for _, want := range []string{"proj", "web", "badge-running", "Up 2 hours", "abcdef123456…", "badge-ok"} {
+	for _, want := range []string{"proj", "web", "badge-running", "Up 2 hours", "abcdef123456…", "badge-ok", `<span class="group-count ok">1</span>`} {
 		if !strings.Contains(rows, want) {
 			t.Errorf("containers fragment must contain %q", want)
 		}
+	}
+	if strings.Contains(rows, "group-count bad") {
+		t.Error("containers fragment must not contain a red count pill when all containers run")
 	}
 
 	images := string(frags["images"])
@@ -227,5 +230,27 @@ func TestImageUpdateLabels(t *testing.T) {
 		if got := img.UpdateLabel(); got != want[1] {
 			t.Errorf("UpdateLabel(%q) = %q, want %q", update, got, want[1])
 		}
+	}
+}
+
+func TestGroupCounts(t *testing.T) {
+	states := []string{"running", "exited", "created", "paused"}
+	cn := make([]Container, len(states))
+	for i, s := range states {
+		cn[i] = Container{State: s}
+	}
+	g := ContainerGroup{Name: "proj", Containers: cn}
+	if got := g.RunningCount(); got != 1 {
+		t.Errorf("RunningCount = %d, want 1", got)
+	}
+	if got := g.StoppedCount(); got != 3 {
+		t.Errorf("StoppedCount = %d, want 3", got)
+	}
+	empty := ContainerGroup{}
+	if got := empty.RunningCount(); got != 0 {
+		t.Errorf("empty RunningCount = %d, want 0", got)
+	}
+	if got := empty.StoppedCount(); got != 0 {
+		t.Errorf("empty StoppedCount = %d, want 0", got)
 	}
 }

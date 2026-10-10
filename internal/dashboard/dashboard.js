@@ -261,10 +261,9 @@ function applyCollapsed(table, ti) {
     if (!g.header) {
       return;
     }
-    g.header.classList.toggle(
-      "collapsed",
-      list.indexOf(g.header.getAttribute("data-group")) !== -1,
-    );
+    var collapsed = list.indexOf(g.header.getAttribute("data-group")) !== -1;
+    g.header.classList.toggle("collapsed", collapsed);
+    g.header.setAttribute("aria-expanded", collapsed ? "false" : "true");
   });
 }
 
@@ -283,7 +282,12 @@ function syncCollapseAll() {
   if (!btn) {
     return;
   }
-  btn.textContent = allCollapsed ? "➕ Expand" : "➖ Collapse";
+  btn.classList.toggle("collapsed", allCollapsed);
+  btn.setAttribute("aria-expanded", allCollapsed ? "false" : "true");
+  var lbl = btn.querySelector(".lbl");
+  if (lbl) {
+    lbl.textContent = allCollapsed ? "Expand all" : "Collapse all";
+  }
   btn.title = allCollapsed ? "Expand all stacks" : "Collapse all stacks";
 }
 
@@ -338,6 +342,7 @@ document.querySelectorAll("table").forEach(function (table, ti) {
         return;
       }
       var hide = gr.classList.toggle("collapsed");
+      gr.setAttribute("aria-expanded", hide ? "false" : "true");
       var r = gr.nextElementSibling;
       while (r && r.tagName === "TR" && !r.classList.contains("group-row")) {
         r.style.display = hide ? "none" : "";
@@ -355,6 +360,17 @@ document.querySelectorAll("table").forEach(function (table, ti) {
       ui.collapsed = list;
       persist();
       syncCollapseAll();
+    });
+    table.addEventListener("keydown", function (e) {
+      var gr = e.target.closest("tr.group-row");
+      if (!gr) {
+        return;
+      }
+      if (e.key !== "Enter" && e.key !== " ") {
+        return;
+      }
+      e.preventDefault();
+      gr.click();
     });
     syncCollapseAll();
   }
@@ -403,8 +419,7 @@ var HL_TIME =
   "|\\d{1,2}:\\d{2}(?::\\d{2})?(?:[.,]\\d+)?(?:Z|[+-]\\d{2}:?\\d{2})?" +
   "|(?:\\d{1,3}\\.){3}\\d{1,3}(?:/\\d{1,2})?" +
   "|\\d{2}[-/.]\\d{1,2}[-/.]\\d{4}";
-var HL_NUM =
-  "v?\\d+(?:\\.\\d+)*(?:[KMGTP]i?B|ms|ns|min|B|%|[smh])?(?![\\w.])";
+var HL_NUM = "v?\\d+(?:\\.\\d+)*(?:[KMGTP]i?B|ms|ns|min|B|%|[smh])?(?![\\w.])";
 var HL_LINK =
   "(?:https?|ftp)://[^\\s\"'<>]*[^\\s\"'<>.,;:!?\\)}]" +
   "|\\bwww\\.[^\\s\"'<>]*[^\\s\"'<>.,;:!?\\)}]";
@@ -1793,11 +1808,18 @@ function colorFrag(text, re, on) {
       first.focus();
     }
   });
-  [filter, insens, ctxChk, outChk, errChk, colorChk, sinceSel, linesSel].forEach(
-    function (el) {
-      el.addEventListener("change", persistLogs);
-    },
-  );
+  [
+    filter,
+    insens,
+    ctxChk,
+    outChk,
+    errChk,
+    colorChk,
+    sinceSel,
+    linesSel,
+  ].forEach(function (el) {
+    el.addEventListener("change", persistLogs);
+  });
   modeSeg.addEventListener("change", persistLogs);
   autoScroll.addEventListener("click", persistLogs);
   restoreLogs();
