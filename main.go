@@ -26,7 +26,7 @@ import (
 
 var (
 	// Maximum number of log lines that can be requested from a container at once
-	maxTailLines = 500000
+	maxTailLines = 100000
 	// Read timeout for container log requests (non-streaming mode)
 	logsReadTimeout = 15 * time.Second
 )

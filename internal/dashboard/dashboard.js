@@ -808,7 +808,7 @@ function colorFrag(text, re, on) {
     var v = parseInt(linesSel.value, 10) || 0;
     if (v > 0) return v;
 
-    return ageSinceMs() ? 500000 : 0;
+    return ageSinceMs() ? 100000 : 0;
   }
 
   function addLine(d) {
@@ -1737,7 +1737,10 @@ function colorFrag(text, re, on) {
       if (r) r.checked = true;
     }
     if (s.since) sinceSel.value = s.since;
-    if (s.lines) linesSel.value = s.lines;
+    if (s.lines) {
+      linesSel.value = s.lines;
+      if (linesSel.selectedIndex === -1) linesSel.value = "100";
+    }
     if (typeof s.ins === "boolean") insens.checked = s.ins;
     if (typeof s.ctx === "boolean") ctxChk.checked = s.ctx;
     if (typeof s.out === "boolean") outChk.checked = s.out;
