@@ -1,7 +1,8 @@
 ![](/img/logo.png)
 
 [![Docker Hub Pulls](https://img.shields.io/docker/pulls/lifailon/logporter?label=Docker+Hub+Pulls&logo=docker)](https://hub.docker.com/r/lifailon/logporter) \
-[![Docker Image Size](https://img.shields.io/docker/image-size/lifailon/logporter?label=Docker+Image+Size&logo=docker)](https://hub.docker.com/r/lifailon/logporter/tags)
+[![Docker Image Size](https://img.shields.io/docker/image-size/lifailon/logporter?label=Docker+Image+Size&logo=docker)](https://hub.docker.com/r/lifailon/logporter/tags) \
+[![Coverage](https://img.shields.io/codecov/c/github/Lifailon/logporter?label=Coverage&logo=codecov)](https://codecov.io/gh/Lifailon/logporter)
 
 A lightweight alternative to 🦉 [cAdvisor](https://github.com/google/cadvisor) for exporting metrics from Docker containers, a log collector for sending to Lok, and searching for new image versions in remote registries based on semantic analysis of tags or digests in a single container.
 
@@ -29,13 +30,13 @@ Go to Grafana UI: `http://localhost:3000` and enter `admin`:`admin`.
 
 ## Dashboard
 
-The project supports a built-in dashboard that contains summary information on the status of all containers, images, and volumes. The interface is based on [go-template](https://pkg.go.dev/html/template) and does not affect performance in any way, as it uses cached data.
+The project supports a built-in dashboard that contains summary information on the status of all containers, images, and volumes. The interface is based on [go-template](https://pkg.go.dev/html/template) and vanilla JavaScript. Cached data is used for rendering, so it does not impact the exporter performance.
 
 Go to Dashboard: `http://localhost:9333`.
 
 ![](/img/dashboard.jpg)
 
-The dashboard allows you to view container logs in real time, with support for content filtering.
+The dashboard provides real-time access to container logs using an SSE stream. It handles large log histories efficiently through DOM virtualization (rendering only visible lines to ensure high performance), offers various filtering modes, and allows navigation through the loaded content using an interactive timeline.
 
 ![](/img/dashboard-logs.jpg)
 
@@ -85,19 +86,22 @@ services:
 
 List of environment variables to configure:
 
-| Label                           | Type      | Default | Description
-| -                               | -         | -       | -
-| `LOG_LEVEL`                     | `string`  | `info`  | Use debug to get detailed output of the exporter operation or error to suppress the output of info messages
-| `DOCKER_METRICS_HOST`           | `string`  | `""`    | Host/IP address on which the HTTP server listens (default is all interfaces `0.0.0.0`; set e.g. `127.0.0.1` when running standalone binary outside Docker)
-| `DOCKER_METRICS_PORT`           | `int`     | `9333`  | The port on which the exporter is listening
-| `DOCKER_METRICS_HOSTNAME`       | `string`  | `""`    | Custom hostname displayed in Prometheus and Loki labels (by default from Docker API or OS)
-| `DOCKER_METRICS_CUSTOM_LABELS`  | `string`  | `""`    | List of custom labels that will be added to all container metrics (only if present, e.g. `org.opencontainers.image.version`)
-| `DOCKER_METRICS_CACHE`          | `int`     | `15`    | Cache time for all collected metrics in seconds. Until the cache expires, queried metrics will return the last value received
-| `DOCKER_METRICS_VOLUME`         | `boolean` | `true`  | Enable metrics collection for all volumes and their size. Data collection occurs in the background, without waiting for scrape
-| `DOCKER_METRICS_VOLUME_CACHE`   | `int`     | `30`    | Cache time for collected volumes metrics in minutes.         
-| `DOCKER_METRICS_IMAGE_UPDATE`   | `boolean` | `true`  | Enable digest-based update check metric
-| `DOCKER_METRICS_IMAGE_INTERVAL` | `int`     | `30`    | Image update check interval in minutes
-| `DOCKER_HOST`                   | `string`  | `""`    | Change the socket address to monitor a remote host or proxy instead of mounting a Docker socket for increased security (optional)
+| Label                           | Type      | Default     | Description
+| -                               | -         | -           | -
+| `LOG_LEVEL`                     | `string`  | `info`      | Use debug to get detailed output of the exporter operation or error to suppress the output of info messages.
+| `DOCKER_METRICS_HOST`           | `string`  | `"0.0.0.0"` | The host or IP address on which the HTTP server listens (defaults to all interfaces). Specify `127.0.0.1` when running the standalone binary outside of Docker.
+| `DOCKER_METRICS_PORT`           | `int`     | `9333`      | The port on which the exporter is listening.
+| `DOCKER_METRICS_HOSTNAME`       | `string`  | `""`        | Custom hostname displayed in Prometheus and Loki labels (by default from Docker API or OS).
+| `DOCKER_METRICS_CUSTOM_LABELS`  | `string`  | `""`        | List of custom labels that will be added to all container metrics (only if present, e.g. `org.opencontainers.image.version`).
+| `DOCKER_METRICS_CACHE`          | `int`     | `15`        | Cache time for all collected metrics in seconds. Until the cache expires, queried metrics will return the last value received.
+| `DOCKER_METRICS_VOLUME`         | `boolean` | `true`      | Enable metrics collection for all volumes and their size. Data collection occurs in the background, without waiting for scrape.
+| `DOCKER_METRICS_VOLUME_CACHE`   | `int`     | `30`        | Cache time for collected volumes metrics in minutes.
+| `DOCKER_METRICS_IMAGE_UPDATE`   | `boolean` | `true`      | Enable digest-based update check metric.
+| `DOCKER_METRICS_IMAGE_INTERVAL` | `int`     | `30`        | Image update check interval in minutes.
+| `DOCKER_HOST`                   | `string`  | `""`        | Change the socket address to monitor a remote host or proxy instead of mounting a Docker socket for increased security (optional).
+| `DASHBOARD_USERNAME`            | `string`  | `""`        | Username for accessing the control panel.
+| `DASHBOARD_PASSWORD`            | `string`  | `""`        | Password for accessing the control panel. If no username and password are specified, authentication is disabled.
+| `DASHBOARD_AUTH_TTL`            | `int`     | `0`         | Session lifetime in seconds before re-authorization.
 
 - Connect the new target to the Prometheus configuration file:
 
