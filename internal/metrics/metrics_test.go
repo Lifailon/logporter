@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -623,6 +624,49 @@ func TestGetContainers(t *testing.T) {
 	}
 	if got := m.volumeUsage["pgdata"]; len(got) != 1 || got[0] != "web" {
 		t.Fatalf("volumeUsage = %v", m.volumeUsage)
+	}
+}
+
+func TestGetContainersWithoutNames(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		field string
+	}{
+		{name: "missing"},
+		{name: "null", field: `"Names":null,`},
+		{name: "empty", field: `"Names":[],`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dc := metricsClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				getDockerMockRoutes(w, r, map[string]func(w http.ResponseWriter){
+					"/containers/json": func(w http.ResponseWriter) {
+						_, _ = fmt.Fprintf(w, `[
+							{"Id":"unnamed",%s"State":"running","ImageID":"unnamed-image","Mounts":[{"Type":"volume","Name":"unnamed-volume"}]},
+							{"Id":"abc","Names":["/web"],"State":"running","ImageID":"web-image"}
+						]`, tc.field)
+					},
+				})
+			}))
+			var logs bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logs, nil))
+			m := &Metrics{}
+			labels, ids := m.getContainers(context.Background(), dc, true, logger)
+			if len(labels) != 1 || labels["abc"] == nil || labels["abc"].name != "web" {
+				t.Fatalf("expected only the named container, got %v", labels)
+			}
+			if len(ids) != 1 || ids[0] != "abc" {
+				t.Fatalf("running IDs = %v, want [abc]", ids)
+			}
+			if _, ok := m.imageUsage["unnamed-image"]; ok {
+				t.Fatal("skipped container must not appear in image usage")
+			}
+			if _, ok := m.volumeUsage["unnamed-volume"]; ok {
+				t.Fatal("skipped container must not appear in volume usage")
+			}
+			if got := logs.String(); !strings.Contains(got, "level=WARN") || !strings.Contains(got, "skipping container without names") || !strings.Contains(got, "id=unnamed") {
+				t.Fatalf("expected warning with container ID, got %q", got)
+			}
+		})
 	}
 }
 

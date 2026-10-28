@@ -141,6 +141,11 @@ func (m *Metrics) getContainers(ctx context.Context, dockerClient *client.Client
 	m.imageUsage = make(map[string][]string)
 	var idArr []string
 	for _, container := range containers {
+		if len(container.Names) == 0 {
+			logger.Warn("skipping container without names", "id", container.ID)
+			continue
+		}
+
 		// Fills the info structure
 		i := Labels{}
 		i.name = strings.Replace(container.Names[0], "/", "", 1)
